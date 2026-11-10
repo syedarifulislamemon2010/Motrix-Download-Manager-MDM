@@ -76,7 +76,7 @@ export const appSettingsSchema = z.object({
   browserBridgeEnabled: z.boolean().catch(true),
   liquidGlassEffect: z.boolean().catch(false),
   warnBeforeQuit: z.boolean().catch(true),
-  checkForUpdatesOnLaunch: z.boolean().catch(true),
+  checkForUpdatesOnLaunch: z.boolean().catch(false),
   updateChannel: appUpdateChannelSchema.catch('stable'),
 })
 

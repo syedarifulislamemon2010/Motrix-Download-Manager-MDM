@@ -417,16 +417,16 @@ describe('validateAppSettings', () => {
     expect(result.warnBeforeQuit).toBe(true)
   })
 
-  it('checks for updates on launch by default', () => {
-    expect(DEFAULT_APP_SETTINGS.checkForUpdatesOnLaunch).toBe(true)
+  it('disables checking for updates on launch by default', () => {
+    expect(DEFAULT_APP_SETTINGS.checkForUpdatesOnLaunch).toBe(false)
   })
 
-  it('falls back checkForUpdatesOnLaunch to true on invalid input', () => {
+  it('falls back checkForUpdatesOnLaunch to false on invalid input', () => {
     const result = validateAppSettings({
       ...DEFAULT_APP_SETTINGS,
       checkForUpdatesOnLaunch: 'nope' as unknown as boolean,
     })
-    expect(result.checkForUpdatesOnLaunch).toBe(true)
+    expect(result.checkForUpdatesOnLaunch).toBe(false)
   })
 
   it('uses the stable application update channel by default', () => {

@@ -337,8 +337,5 @@
   "artifactBuildCompleted": "./scripts/finalize-appimage-artifact.mjs",
   "detectUpdateChannel": true,
   "generateUpdatesFilesForAllChannels": true,
-  "publish": {
-    "provider": "generic",
-    "url": "https://dl.motrix.app/releases/"
-  }
+  "publish": null
 }
