@@ -1,0 +1,67 @@
+import { builtinModules, createRequire } from 'node:module'
+import path from 'node:path'
+import { defineConfig } from 'vite'
+import { PRODUCTION_OUTPUT } from './scripts/vite-production-output'
+
+const require = createRequire(import.meta.url)
+const pkg = require('./package.json') as {
+  dependencies?: Record<string, string>
+  optionalDependencies?: Record<string, string>
+}
+const productionDeps = Object.keys({
+  ...(pkg.dependencies ?? {}),
+  ...(pkg.optionalDependencies ?? {}),
+})
+const nodeBuiltinSet = new Set(builtinModules)
+
+function matchesPackage(id: string, name: string): boolean {
+  return id === name || id.startsWith(`${name}/`)
+}
+
+function isExternal(id: string): boolean {
+  if (id.startsWith('node:')) return true
+  if (nodeBuiltinSet.has(id)) return true
+  // Bundle the pure metadata parser into each host target.
+  if (matchesPackage(id, '@motrix/torrent')) return false
+  return productionDeps.some((name) => matchesPackage(id, name))
+}
+
+export default defineConfig({
+  publicDir: false,
+  // Published packages are externalized by SSR unless explicitly bundled.
+  ssr: { noExternal: ['@motrix/torrent'] },
+  build: {
+    outDir: 'dist/server',
+    emptyOutDir: true,
+    minify: 'oxc',
+    sourcemap: false,
+    target: 'node22',
+    ssr: true,
+    lib: {
+      entry: {
+        index: 'src/server/index.ts',
+        'motrix-admin': 'src/server/operator-cli.ts',
+      },
+      formats: ['es'],
+    },
+    rollupOptions: {
+      external: isExternal,
+      output: {
+        ...PRODUCTION_OUTPUT,
+        // Preserve the names used in diagnostics by the previously unminified host.
+        keepNames: true,
+        entryFileNames: '[name].mjs',
+        chunkFileNames: 'chunks/[name]-[hash].mjs',
+      },
+    },
+  },
+  resolve: {
+    conditions: ['node', 'default'],
+    mainFields: ['main', 'module'],
+    alias: {
+      '@shared': path.resolve(import.meta.dirname, 'src/shared'),
+      '@core': path.resolve(import.meta.dirname, 'src/core'),
+      '@server': path.resolve(import.meta.dirname, 'src/server'),
+    },
+  },
+})

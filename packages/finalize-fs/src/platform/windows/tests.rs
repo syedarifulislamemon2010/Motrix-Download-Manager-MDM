@@ -1,0 +1,462 @@
+use super::{
+    copy_opened, open_artifact, open_root, remove_opened, rename_opened_no_replace, sync_root,
+};
+use std::fs;
+use std::path::{Path, PathBuf};
+use std::process::Command;
+use std::time::{SystemTime, UNIX_EPOCH};
+
+struct Scratch(PathBuf);
+
+impl Scratch {
+    fn new(label: &str) -> Self {
+        let nonce = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .expect("system time")
+            .as_nanos();
+        let root = std::env::temp_dir().join(format!(
+            "motrix-finalize-fs-{label}-{}-{nonce}",
+            std::process::id()
+        ));
+        fs::create_dir_all(&root).expect("create scratch directory");
+        Self(root)
+    }
+
+    fn path(&self) -> &Path {
+        &self.0
+    }
+}
+
+impl Drop for Scratch {
+    fn drop(&mut self) {
+        let _ = fs::remove_dir_all(&self.0);
+    }
+}
+
+#[test]
+fn rejects_ambiguous_windows_path_components() {
+    for component in [
+        "file.",
+        "file ",
+        "payload:stream",
+        "CON",
+        "lpt9.txt",
+        "COM¹.log",
+        "nested/name",
+    ] {
+        assert!(
+            super::nt::wide_name(component).is_err(),
+            "{component:?} must be rejected"
+        );
+    }
+    assert!(super::nt::wide_name("资料.zip").is_ok());
+}
+
+#[test]
+fn copies_and_removes_a_held_directory_without_following_paths() {
+    let scratch = Scratch::new("copy-remove");
+    let source = scratch.path().join("source");
+    fs::create_dir_all(source.join("nested")).expect("create source tree");
+    fs::write(source.join("nested").join("payload.bin"), b"payload").expect("write source payload");
+
+    let root =
+        open_root(scratch.path().to_str().expect("UTF-8 scratch path")).expect("open held root");
+    let source_handle = open_artifact(&root, "source").expect("open source artifact");
+    copy_opened(&source_handle, &root, "private-target").expect("copy held tree");
+    assert_eq!(
+        fs::read(scratch.path().join("private-target/nested/payload.bin"))
+            .expect("read copied payload"),
+        b"payload"
+    );
+    sync_root(&root).expect("flush held root");
+
+    let copied = open_artifact(&root, "private-target").expect("open copied artifact");
+    remove_opened(copied, ".motrix-remove", false).expect("remove held copied tree");
+    assert!(!scratch.path().join("private-target").exists());
+    assert!(!scratch.path().join(".motrix-remove").exists());
+}
+
+#[test]
+fn removes_a_held_file_by_consuming_its_admitted_handle() {
+    let scratch = Scratch::new("remove-file");
+    fs::write(scratch.path().join("payload.bin"), b"payload").expect("write payload");
+
+    let root =
+        open_root(scratch.path().to_str().expect("UTF-8 scratch path")).expect("open held root");
+    let payload = open_artifact(&root, "payload.bin").expect("open payload artifact");
+    remove_opened(payload, ".motrix-remove", false).expect("remove held payload");
+
+    assert!(!scratch.path().join("payload.bin").exists());
+    assert!(!scratch.path().join(".motrix-remove").exists());
+}
+
+#[test]
+fn rename_is_atomic_and_never_replaces_an_existing_target() {
+    let scratch = Scratch::new("rename");
+    fs::write(scratch.path().join("source.bin"), b"source").expect("write source");
+    fs::write(scratch.path().join("target.bin"), b"target").expect("write target");
+    let root =
+        open_root(scratch.path().to_str().expect("UTF-8 scratch path")).expect("open held root");
+    let source = open_artifact(&root, "source.bin").expect("open source");
+
+    assert!(rename_opened_no_replace(&source, &root, "target.bin").is_err());
+    assert_eq!(
+        fs::read(scratch.path().join("source.bin")).unwrap(),
+        b"source"
+    );
+    assert_eq!(
+        fs::read(scratch.path().join("target.bin")).unwrap(),
+        b"target"
+    );
+
+    rename_opened_no_replace(&source, &root, "published.bin").expect("publish source");
+    sync_root(&root).expect("flush rename");
+    assert!(!scratch.path().join("source.bin").exists());
+    assert_eq!(
+        fs::read(scratch.path().join("published.bin")).unwrap(),
+        b"source"
+    );
+}
+
+#[test]
+fn rejects_a_junction_in_the_root_path() {
+    let scratch = Scratch::new("junction");
+    let real = scratch.path().join("real");
+    let junction = scratch.path().join("junction");
+    fs::create_dir_all(real.join("child")).expect("create junction target");
+    let status = Command::new("cmd")
+        .arg("/c")
+        .arg("mklink")
+        .arg("/J")
+        .arg(&junction)
+        .arg(&real)
+        .status()
+        .expect("run mklink");
+    assert!(
+        status.success(),
+        "mklink /J must succeed for the contract test"
+    );
+
+    let result = open_root(
+        junction
+            .join("child")
+            .to_str()
+            .expect("UTF-8 junction path"),
+    );
+    assert!(result.is_err(), "held root traversal must reject junctions");
+
+    let _ = Command::new("cmd")
+        .arg("/c")
+        .arg("rmdir")
+        .arg(&junction)
+        .status();
+}
+
+#[test]
+fn rename_only_handles_use_metadata_and_do_not_authorize_removal() {
+    let scratch = Scratch::new("rename-only");
+    fs::write(scratch.path().join("source"), b"payload").unwrap();
+    let root = open_root(scratch.path().to_str().unwrap()).unwrap();
+    let artifact = super::open_artifact_for_rename(&root, "source").unwrap();
+    assert!(artifact.snapshot.is_none());
+    assert!(copy_opened(&artifact, &root, "copy").is_err());
+    rename_opened_no_replace(&artifact, &root, "target").unwrap();
+    assert!(remove_opened(artifact, ".quarantine", false).is_err());
+    assert_eq!(fs::read(scratch.path().join("target")).unwrap(), b"payload");
+}
+
+#[test]
+fn rename_only_file_excludes_writers_until_the_published_handle_closes() {
+    let scratch = Scratch::new("rename-write-exclusion");
+    let source = scratch.path().join("source.motrix");
+    let target = scratch.path().join("source");
+    fs::write(&source, b"payload").unwrap();
+    let root = open_root(scratch.path().to_str().unwrap()).unwrap();
+    let artifact = super::open_artifact_for_rename(&root, "source.motrix").unwrap();
+
+    let error = fs::OpenOptions::new()
+        .write(true)
+        .open(&source)
+        .unwrap_err();
+    assert_eq!(
+        error.raw_os_error(),
+        Some(windows_sys::Win32::Foundation::ERROR_SHARING_VIOLATION as i32)
+    );
+    rename_opened_no_replace(&artifact, &root, "source").unwrap();
+    let error = fs::OpenOptions::new()
+        .write(true)
+        .open(&target)
+        .unwrap_err();
+    assert_eq!(
+        error.raw_os_error(),
+        Some(windows_sys::Win32::Foundation::ERROR_SHARING_VIOLATION as i32)
+    );
+    assert_eq!(fs::read(&target).unwrap(), b"payload");
+
+    drop(artifact);
+    fs::OpenOptions::new().write(true).open(&target).unwrap();
+}
+
+#[test]
+fn synced_guard_preserves_the_post_close_stamp_and_excludes_late_writers() {
+    let scratch = Scratch::new("synced-guard");
+    let source = scratch.path().join("app.zip.motrix");
+    let target = scratch.path().join("app.zip");
+    fs::write(&source, b"download").unwrap();
+    let root = open_root(scratch.path().to_str().unwrap()).unwrap();
+    let (guard, _) = super::open_rename_guard(&root, "app.zip.motrix")
+        .unwrap()
+        .expect("NTFS guard");
+    assert!(fs::OpenOptions::new().write(true).open(&source).is_err());
+    rename_opened_no_replace(&guard, &root, "app.zip").unwrap();
+    assert!(fs::OpenOptions::new().write(true).open(&target).is_err());
+    let installed = super::metadata::change_time(&guard.handle).unwrap();
+    drop(guard);
+    let reopened =
+        super::nt::open_selected(&root.handle, &super::nt::wide_name("app.zip").unwrap()).unwrap();
+    assert_eq!(super::metadata::change_time(&reopened).unwrap(), installed);
+    assert_eq!(fs::read(target).unwrap(), b"download");
+    assert!(!source.exists());
+}
+
+#[test]
+fn rename_admission_rejects_an_existing_writer_even_when_it_shares_delete() {
+    use std::os::windows::fs::OpenOptionsExt;
+    use windows_sys::Win32::Storage::FileSystem::{
+        FILE_SHARE_DELETE, FILE_SHARE_READ, FILE_SHARE_WRITE,
+    };
+
+    let scratch = Scratch::new("rename-existing-writer");
+    let source = scratch.path().join("source.motrix");
+    fs::write(&source, b"payload").unwrap();
+    let root = open_root(scratch.path().to_str().unwrap()).unwrap();
+    let writer = fs::OpenOptions::new()
+        .write(true)
+        .share_mode(FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE)
+        .open(&source)
+        .unwrap();
+    let name = super::nt::wide_name("source.motrix").unwrap();
+    // Test one admission attempt; the production rename wrapper retries this
+    // sharing violation without relaxing its deny-write policy.
+    let error = super::nt::open_existing(&root.handle, &name).unwrap_err();
+    assert_eq!(
+        crate::error::os_code(&error),
+        Some(windows_sys::Win32::Foundation::ERROR_SHARING_VIOLATION as i32)
+    );
+    drop(writer);
+    let artifact = super::open_artifact_for_rename(&root, "source.motrix").unwrap();
+    rename_opened_no_replace(&artifact, &root, "source").unwrap();
+    assert_eq!(fs::read(scratch.path().join("source")).unwrap(), b"payload");
+}
+
+#[test]
+fn rename_admission_excludes_a_writable_mapping_after_its_file_handle_closes() {
+    use std::os::windows::fs::OpenOptionsExt;
+    use std::os::windows::io::{AsRawHandle, FromRawHandle, OwnedHandle};
+    use windows_sys::Win32::Storage::FileSystem::{
+        FILE_SHARE_DELETE, FILE_SHARE_READ, FILE_SHARE_WRITE,
+    };
+    use windows_sys::Win32::System::Memory::{
+        CreateFileMappingW, FILE_MAP_WRITE, MEMORY_MAPPED_VIEW_ADDRESS, MapViewOfFile,
+        PAGE_READWRITE, UnmapViewOfFile,
+    };
+
+    struct View(MEMORY_MAPPED_VIEW_ADDRESS);
+    impl Drop for View {
+        fn drop(&mut self) {
+            unsafe { UnmapViewOfFile(self.0) };
+        }
+    }
+
+    let scratch = Scratch::new("rename-existing-mapping");
+    let source = scratch.path().join("source.motrix");
+    fs::write(&source, b"payload").unwrap();
+    let root = open_root(scratch.path().to_str().unwrap()).unwrap();
+    let writer = fs::OpenOptions::new()
+        .read(true)
+        .write(true)
+        .share_mode(FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE)
+        .open(&source)
+        .unwrap();
+    let raw_mapping = unsafe {
+        CreateFileMappingW(
+            writer.as_raw_handle(),
+            std::ptr::null(),
+            PAGE_READWRITE,
+            0,
+            0,
+            std::ptr::null(),
+        )
+    };
+    assert!(!raw_mapping.is_null(), "create writable mapping");
+    let mapping = unsafe { OwnedHandle::from_raw_handle(raw_mapping) };
+    let raw_view = unsafe { MapViewOfFile(mapping.as_raw_handle(), FILE_MAP_WRITE, 0, 0, 0) };
+    assert!(!raw_view.Value.is_null(), "map writable view");
+    let view = View(raw_view);
+    drop(writer);
+
+    let name = super::nt::wide_name("source.motrix").unwrap();
+    assert!(
+        super::nt::open_existing(&root.handle, &name).is_err(),
+        "a surviving writable view must block metadata-only rename admission"
+    );
+    drop(view);
+    drop(mapping);
+    let artifact = super::open_artifact_for_rename(&root, "source.motrix").unwrap();
+    rename_opened_no_replace(&artifact, &root, "source").unwrap();
+    assert_eq!(fs::read(scratch.path().join("source")).unwrap(), b"payload");
+}
+
+#[test]
+fn classic_delete_finishes_after_the_admitted_handle_closes() {
+    let scratch = Scratch::new("classic-delete");
+    fs::write(scratch.path().join("payload.bin"), b"payload").unwrap();
+    let root = open_root(scratch.path().to_str().unwrap()).unwrap();
+    let artifact = open_artifact(&root, "payload.bin").unwrap();
+    super::nt::mark_delete_legacy(&artifact.handle).unwrap();
+    drop(artifact);
+    assert!(!scratch.path().join("payload.bin").exists());
+}
+
+#[test]
+#[ignore = "requires MOTRIX_FINALIZE_SMB_ROOT on a real SMB share"]
+fn smb_share_supports_held_rename_copy_and_removal() {
+    let share = std::env::var("MOTRIX_FINALIZE_SMB_ROOT").expect("SMB test root");
+    let nonce = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap()
+        .as_nanos();
+    let scratch =
+        Scratch(PathBuf::from(share).join(format!("finalize-{}-{nonce}", std::process::id())));
+    fs::create_dir_all(scratch.path().join("tree/nested")).unwrap();
+    fs::write(scratch.path().join("tree/nested/payload.bin"), b"payload").unwrap();
+    fs::write(scratch.path().join("source.motrix"), b"complete").unwrap();
+    let root = open_root(scratch.path().to_str().unwrap()).unwrap();
+    let artifact = super::open_artifact_for_rename(&root, "source.motrix").unwrap();
+    assert!(
+        fs::OpenOptions::new()
+            .write(true)
+            .open(scratch.path().join("source.motrix"))
+            .is_err(),
+        "holding an SMB file must continue to exclude content writers"
+    );
+    rename_opened_no_replace(&artifact, &root, "complete.bin").unwrap();
+    sync_root(&root).unwrap();
+    drop(artifact);
+    assert_eq!(
+        fs::read(scratch.path().join("complete.bin")).unwrap(),
+        b"complete"
+    );
+    assert!(!scratch.path().join("source.motrix").exists());
+    let tree = open_artifact(&root, "tree").unwrap();
+    assert!(rename_opened_no_replace(&tree, &root, "complete.bin").is_err());
+    copy_opened(&tree, &root, "copied-tree").unwrap();
+    let copied = open_artifact(&root, "copied-tree").unwrap();
+    remove_opened(copied, ".remove-copied", false).unwrap();
+    remove_opened(tree, ".remove-tree", false).unwrap();
+    let complete = open_artifact(&root, "complete.bin").unwrap();
+    remove_opened(complete, ".remove-file", false).unwrap();
+    assert_eq!(fs::read_dir(scratch.path()).unwrap().count(), 0);
+}
+
+#[test]
+fn rename_admission_waits_for_a_reader_that_denies_delete_sharing() {
+    use std::os::windows::fs::OpenOptionsExt;
+    use windows_sys::Win32::Storage::FileSystem::{FILE_SHARE_READ, FILE_SHARE_WRITE};
+
+    let scratch = Scratch::new("rename-admission-retry");
+    fs::write(scratch.path().join("source.motrix"), b"complete").unwrap();
+    let root = open_root(scratch.path().to_str().unwrap()).unwrap();
+    let reader = fs::OpenOptions::new()
+        .read(true)
+        .share_mode(FILE_SHARE_READ | FILE_SHARE_WRITE)
+        .open(scratch.path().join("source.motrix"))
+        .unwrap();
+    std::thread::scope(|scope| {
+        scope.spawn(move || {
+            std::thread::sleep(std::time::Duration::from_millis(120));
+            drop(reader);
+        });
+        let artifact = super::open_artifact_for_rename(&root, "source.motrix").unwrap();
+        let outcome = rename_opened_no_replace(&artifact, &root, "complete.bin").unwrap();
+        assert_eq!(outcome.directory_sync_mode, "directory_flushed");
+    });
+    assert_eq!(
+        fs::read(scratch.path().join("complete.bin")).unwrap(),
+        b"complete"
+    );
+    assert!(!scratch.path().join("source.motrix").exists());
+}
+
+#[test]
+#[ignore = "requires MOTRIX_FINALIZE_EXFAT_ROOT on a disposable exFAT volume"]
+fn exfat_volume_root_and_nested_directory_support_no_replace_rename() {
+    use std::io::Write;
+    use std::os::windows::io::AsRawHandle;
+    use windows_sys::Win32::Storage::FileSystem::GetVolumeInformationByHandleW;
+
+    let volume =
+        PathBuf::from(std::env::var("MOTRIX_FINALIZE_EXFAT_ROOT").expect("exFAT volume root"));
+    let (_, parts) = super::split_absolute_root(&volume).unwrap();
+    assert!(parts.is_empty(), "test must include the volume root itself");
+    let root = open_root(volume.to_str().unwrap()).expect("admit exFAT root without a file ID");
+    let mut filesystem = [0_u16; 32];
+    let result = unsafe {
+        GetVolumeInformationByHandleW(
+            root.handle.as_raw_handle(),
+            std::ptr::null_mut(),
+            0,
+            std::ptr::null_mut(),
+            std::ptr::null_mut(),
+            std::ptr::null_mut(),
+            filesystem.as_mut_ptr(),
+            filesystem.len() as u32,
+        )
+    };
+    assert_ne!(
+        result,
+        0,
+        "query exFAT volume: {}",
+        std::io::Error::last_os_error()
+    );
+    let end = filesystem.iter().position(|value| *value == 0).unwrap();
+    assert!(String::from_utf16_lossy(&filesystem[..end]).eq_ignore_ascii_case("exfat"));
+
+    let nonce = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap()
+        .as_nanos();
+    let prefix = format!("motrix-exfat-{}-{nonce}", std::process::id());
+    let scratch = Scratch(volume.join(&prefix));
+    fs::create_dir(scratch.path()).unwrap();
+    fs::create_dir(scratch.path().join("nested")).unwrap();
+    for directory in [volume, scratch.path().join("nested")] {
+        let root = open_root(directory.to_str().unwrap()).unwrap();
+        let source = format!("{prefix}.rar.motrix");
+        let target = format!("{prefix}.rar");
+        for (name, bytes) in [
+            (&source, b"download".as_slice()),
+            (&target, b"existing".as_slice()),
+        ] {
+            let mut file = fs::OpenOptions::new()
+                .write(true)
+                .create_new(true)
+                .open(directory.join(name))
+                .unwrap();
+            file.write_all(bytes).unwrap();
+            file.sync_all().unwrap();
+        }
+        let artifact = super::open_artifact_for_rename(&root, &source).unwrap();
+        assert!(rename_opened_no_replace(&artifact, &root, &target).is_err());
+        assert_eq!(fs::read(directory.join(&target)).unwrap(), b"existing");
+        assert_eq!(fs::read(directory.join(&source)).unwrap(), b"download");
+        fs::remove_file(directory.join(&target)).unwrap();
+        let result = rename_opened_no_replace(&artifact, &root, &target).unwrap();
+        assert_eq!(result.directory_sync_mode, "directory_flushed");
+        sync_root(&root).unwrap();
+        drop(artifact);
+        assert!(!directory.join(&source).exists());
+        assert_eq!(fs::read(directory.join(&target)).unwrap(), b"download");
+        fs::remove_file(directory.join(target)).unwrap();
+    }
+}

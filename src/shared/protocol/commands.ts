@@ -1,0 +1,163 @@
+export const Commands = {
+  SaveNasSettings: 'command:saveNasSettings',
+  AcknowledgeGraphicsRecoveryNotice:
+    'command:acknowledgeGraphicsRecoveryNotice',
+  ExecuteRendererSubmission: 'command:executeRendererSubmission',
+  AcknowledgeRendererIntent: 'command:acknowledgeRendererIntent',
+  ReportRendererSurface: 'command:reportRendererSurface',
+  AcknowledgeRendererProbe: 'command:acknowledgeRendererProbe',
+  ReportRendererFailure: 'command:reportRendererFailure',
+  RecoverCurrentRenderer: 'command:recoverCurrentRenderer',
+  OpenRendererDiagnostics: 'command:openRendererDiagnostics',
+  UpdatePluginOperationDraft: 'command:updatePluginOperationDraft',
+  RevealPluginOperation: 'command:revealPluginOperation',
+  GetPluginOperations: 'command:getPluginOperations',
+  PreparePluginOperation: 'command:preparePluginOperation',
+  PickPluginOperationFile: 'command:pickPluginOperationFile',
+  GetPluginOperationPicker: 'command:getPluginOperationPicker',
+  DiscardPluginOperation: 'command:discardPluginOperation',
+  StartPluginOperation: 'command:startPluginOperation',
+  GetPluginOperationJob: 'command:getPluginOperationJob',
+  CancelPluginOperation: 'command:cancelPluginOperation',
+  PickFile: 'command:pickFile',
+  ActivateLegacyBt: 'command:activateLegacyBt',
+  ActivateLegacyHttp: 'command:activateLegacyHttp',
+  CancelLegacyHttpActivation: 'command:cancelLegacyHttpActivation',
+  PickLegacyImportSource: 'command:pickLegacyImportSource',
+  RevealLegacyImportSource: 'command:revealLegacyImportSource',
+  PickLegacyTorrentMetadata: 'command:pickLegacyTorrentMetadata',
+  CommitLegacyImport: 'command:commitLegacyImport',
+  ReleaseLegacyImportPreview: 'command:releaseLegacyImportPreview',
+  CancelLegacyImport: 'command:cancelLegacyImport',
+  RetryLegacyImport: 'command:retryLegacyImport',
+  DismissLegacyImportInvitation: 'command:dismissLegacyImportInvitation',
+  FinishLegacyImportInvitation: 'command:finishLegacyImportInvitation',
+  PrepareLegacyFreshDownload: 'command:prepareLegacyFreshDownload',
+  ExportLegacyImportReport: 'command:exportLegacyImportReport',
+  SetCompletionShutdown: 'command:setCompletionShutdown',
+  SaveDownloadsSettings: 'command:saveDownloadsSettings',
+  PauseTask: 'command:pauseTask',
+  ResumeTask: 'command:resumeTask',
+  RemoveTask: 'command:removeTask',
+  ReAddTask: 'command:reAddTask',
+  StopSeedingTask: 'command:stopSeedingTask',
+  // Plural task commands (option C of the emit-coalescing design): one
+  // renderer request per multi-select action instead of one per task.
+  // Renderer-IPC only — deliberately NOT MDXP methods; extensions and the
+  // CLI keep driving the singular task/* wire methods.
+  PauseAllTasks: 'command:pauseAllTasks',
+  ResumeAllTasks: 'command:resumeAllTasks',
+  ClearStoppedTasks: 'command:clearStoppedTasks',
+  PauseTasks: 'command:pauseTasks',
+  ResumeTasks: 'command:resumeTasks',
+  MoveTasks: 'command:moveTasks',
+  ChangeBtStorage: 'command:changeBtStorage',
+  CancelBtStorage: 'command:cancelBtStorage',
+  RemoveTasks: 'command:removeTasks',
+  ReAddTasks: 'command:reAddTasks',
+  // Generic user Retry. Shell handlers route sidecar-backed torrents to
+  // re-add and unresolved magnets to a fresh metadata-resolution attempt.
+  RetryTasks: 'command:retryTasks',
+  StopSeedingTasks: 'command:stopSeedingTasks',
+  SetSelectedFiles: 'command:setSelectedFiles',
+  MutateDirectoryPreferences: 'command:mutateDirectoryPreferences',
+  SaveGeneralSettings: 'command:saveGeneralSettings',
+  UpdateSettings: 'command:updateSettings',
+  OpenSettingsDirectory: 'command:openSettingsDirectory',
+  AcceptDisclaimer: 'command:acceptDisclaimer',
+  DeclineDisclaimer: 'command:declineDisclaimer',
+  SetDisclaimerLanguage: 'command:setDisclaimerLanguage',
+  EnablePlugin: 'command:enablePlugin',
+  DisablePlugin: 'command:disablePlugin',
+  UpdatePluginOrder: 'command:updatePluginOrder',
+  UpdatePluginConfig: 'command:updatePluginConfig',
+  InstallPlugin: 'command:installPlugin',
+  ConfirmPluginInstall: 'command:confirmPluginInstall',
+  CancelPluginInstall: 'command:cancelPluginInstall',
+  UninstallPlugin: 'command:uninstallPlugin',
+  // Spec §I30 — user-revocable optional permission grants. Patch is a
+  // partial `GrantsMap`; unknown / required-permission keys are rejected
+  // with `plugin.grants.unknown_permission`.
+  UpdatePluginGrants: 'command:updatePluginGrants',
+  ClearPluginLogs: 'command:clearPluginLogs',
+  SetPluginLogVerbose: 'command:setPluginLogVerbose',
+  // Spec §10 L2870 — auto-update check entry point. Renderer-triggered;
+  // host scans configured remotes for newer versions of installed plugins
+  // and returns a list of `{pluginId, currentVersion, latestVersion}`.
+  CheckPluginUpdates: 'command:checkPluginUpdates',
+  // Builtin hot-update channel (2026-07-18 design §5). Signed overlay
+  // installs — never routed through InstallPlugin/plugin-installer.
+  InstallBuiltinUpdate: 'command:installBuiltinUpdate',
+  ConfirmBuiltinUpdate: 'command:confirmBuiltinUpdate',
+  CancelBuiltinUpdate: 'command:cancelBuiltinUpdate',
+  RevertBuiltinToBundled: 'command:revertBuiltinToBundled',
+  RestartEngine: 'command:restartEngine',
+  RecoverEngine: 'command:recoverEngine',
+  ConfirmPortSwitch: 'command:confirmPortSwitch',
+  NextTorrent: 'command:nextTorrent',
+  DownloadAllTorrents: 'command:downloadAllTorrents',
+  CloseCurrentWindow: 'command:closeCurrentWindow',
+  MinimizeCurrentWindow: 'command:minimizeCurrentWindow',
+  ToggleMaximizeCurrentWindow: 'command:toggleMaximizeCurrentWindow',
+  ShowMainWindow: 'command:showMainWindow',
+  ShowAddTaskWindow: 'command:showAddTaskWindow',
+  // Torrent
+  ParseTorrent: 'command:parseTorrent',
+  AddTorrentTask: 'command:addTorrentTask',
+  AddMagnetTask: 'command:addMagnetTask',
+  // Re-open the file-selection dialog for a magnet that already resolved its
+  // metadata (status=metadata_ready) but whose dialog was dismissed.
+  ReopenMagnetFileSelection: 'command:reopenMagnetFileSelection',
+  HandleDroppedTorrent: 'command:handleDroppedTorrent',
+  // NAT
+  EnableNat: 'command:enableNat',
+  DisableNat: 'command:disableNat',
+  RunNatDiagnostic: 'command:runNatDiagnostic',
+  ForceRemapNat: 'command:forceRemapNat',
+  ExportNatBundle: 'command:exportNatBundle',
+  // Desktop torrent creator
+  CreateTorrent: 'command:createTorrent',
+  PickTorrentSource: 'command:pickTorrentSource',
+  SaveTorrentFile: 'command:saveTorrentFile',
+  // App auto-update
+  CheckForUpdates: 'command:checkForUpdates',
+  DownloadUpdate: 'command:downloadUpdate',
+  InstallUpdate: 'command:installUpdate',
+  ApplyTaskTrackerPlan: 'command:applyTaskTrackerPlan',
+  // Tracker
+  SyncTrackers: 'command:syncTrackers',
+  RetryTrackerSources: 'command:retryTrackerSources',
+  SyncTaskBtTracker: 'command:syncTaskBtTracker',
+  SetTaskBtTracker: 'command:setTaskBtTracker',
+  // Window
+  PickSaveDir: 'command:pickSaveDir',
+  CreateServerDirectory: 'command:createServerDirectory',
+  ResizeWindow: 'command:resizeWindow',
+  OpenExternal: 'command:openExternal',
+  RequestDefaultTorrentHandler: 'command:requestDefaultTorrentHandler',
+  // Linux AppImage desktop integration (settings-driven enable/remove).
+  // Both return the refreshed `AppImageIntegrationView`.
+  EnableAppImageIntegration: 'command:enableAppImageIntegration',
+  ConfigureAppImageNativeHost: 'command:configureAppImageNativeHost',
+  RemoveAppImageIntegration: 'command:removeAppImageIntegration',
+  RevealInFolder: 'command:revealInFolder',
+  OpenTaskFile: 'command:openTaskFile',
+  // Menu
+  UpdateMenuContext: 'command:updateMenuContext',
+  ExecuteApplicationMenuItem: 'command:executeApplicationMenuItem',
+  // Task creation (engine-neutral)
+  CreateTask: 'command:createTask',
+  // GeoIP
+  UpdateGeoIPDatabase: 'command:updateGeoIPDatabase',
+  // Notifications
+  // MarkNotificationRead takes (id: string).
+  MarkNotificationRead: 'command:markNotificationRead',
+  MarkAllNotificationsRead: 'command:markAllNotificationsRead',
+  // DeleteNotification takes (id: string).
+  DeleteNotification: 'command:deleteNotification',
+  ClearNotifications: 'command:clearNotifications',
+  InstallCliTool: 'command:installCliTool',
+  InstallFfmpeg: 'command:installFfmpeg',
+} as const
+
+export type CommandChannel = (typeof Commands)[keyof typeof Commands]

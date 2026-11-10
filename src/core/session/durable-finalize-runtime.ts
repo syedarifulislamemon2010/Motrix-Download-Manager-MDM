@@ -1,0 +1,392 @@
+import { randomUUID } from 'node:crypto'
+import path from 'node:path'
+import { sanitizeFinalizePath } from '@core/fs/finalize-path'
+import { getLogger } from '@core/logger'
+import {
+  ArtifactIdentityError,
+  artifactContentEquals,
+  artifactIdentityEquals,
+} from '@core/plugin/finalize/artifact-identity'
+import { ArtifactMutationLeaseCoordinator } from '@core/plugin/finalize/artifact-mutation-lease'
+import type {
+  FinalizeArtifactOperations,
+  FinalizeJournalRecord,
+  PreparedFileRename,
+} from '@core/plugin/finalize/finalize-committer'
+import {
+  type FinalizeCommitResult,
+  FinalizeCommitter,
+} from '@core/plugin/finalize/finalize-committer'
+import { FinalizeRecovery } from '@core/plugin/finalize/finalize-recovery'
+import { FinalizeSourceVerificationError } from '@core/plugin/finalize/finalize-recovery-errors'
+import {
+  assertFinalizePaths,
+  freezeHookPlan,
+  isOrdinarySuffixRemoval,
+} from '@core/plugin/finalize/hook-plan'
+import type { StagedMetadataOp } from '@core/plugin/hooks/staged-effects'
+import type { PostDeliveryAdmission } from '@core/plugin/post/delivery-types'
+import type { DownloadTask } from '@shared/types/task'
+import type { TaskOccurrence } from '@shared/types/task-occurrence'
+import type Database from 'better-sqlite3'
+import { SqliteFinalizeJournalRepository } from './finalize-journal-repository'
+import type { SessionManager } from './session-manager'
+
+export interface DurableFinalizeArtifactInput {
+  task: DownloadTask
+  occurrence: TaskOccurrence | null
+  sourcePath: string
+  targetPath: string
+  recoverySha256?: string
+  replacement?: { pluginId: string; stagedPath: string }
+  metadataOps: readonly StagedMetadataOp[]
+  contributors: readonly string[]
+  postDeliveries: readonly PostDeliveryAdmission[]
+  beforeCommit?: () => void
+  fileRebase?: { sourceRoot: string; targetRoot: string }
+  /** Read-only payload validation while engine and plugin writers are quiesced. */
+  verifySource?: () => Promise<void>
+  /** Synchronous publication before another session snapshot can save stale paths. */
+  onCommitted?: () => void
+}
+
+export interface DurableFinalizeRuntimeOptions {
+  db: Database.Database
+  session: Pick<SessionManager, 'persistFinalizedArtifact'>
+  fs: FinalizeArtifactOperations
+  leases?: ArtifactMutationLeaseCoordinator
+  now?: () => number
+}
+
+/** Owns the filesystem journal and the one FS→SQLite commit boundary. */
+export class DurableFinalizeRuntime {
+  private readonly leases: ArtifactMutationLeaseCoordinator
+  private readonly now: () => number
+
+  constructor(private readonly options: DurableFinalizeRuntimeOptions) {
+    this.leases = options.leases ?? new ArtifactMutationLeaseCoordinator([])
+    this.now = options.now ?? Date.now
+  }
+
+  async withArtifactLease<T>(
+    taskId: string,
+    operation: () => Promise<T>
+  ): Promise<T> {
+    const lease = await this.leases.acquire(taskId)
+    try {
+      return await operation()
+    } finally {
+      await lease.release()
+    }
+  }
+
+  async commit(
+    input: DurableFinalizeArtifactInput
+  ): Promise<FinalizeCommitResult> {
+    input.beforeCommit?.()
+    // The final name can carry characters that Windows or exFAT volumes
+    // cannot reopen. Sanitize the final component once, before validation or
+    // identity capture, so journal, rebase and database all record the name
+    // the filesystem actually received.
+    const targetPath = sanitizeFinalizePath(input.targetPath)
+    if (targetPath !== input.targetPath) {
+      getLogger('finalize').info(
+        {
+          taskId: input.task.id,
+          requested: input.targetPath,
+          sanitized: targetPath,
+        },
+        'finalize_target_name_sanitized'
+      )
+    }
+    // Reject invalid output plans before quiescing writers or hashing large files.
+    try {
+      assertFinalizePaths(input.task.saveDir, input.sourcePath, targetPath)
+    } catch (err) {
+      getLogger('finalize').warn(
+        {
+          taskId: input.task.id,
+          phase: input.task.transitionPhase,
+          saveDir: input.task.saveDir,
+          sourcePath: input.sourcePath,
+          targetPath,
+          err,
+        },
+        'finalize_path_validation_failed'
+      )
+      throw err
+    }
+    const lease = await this.leases.acquire(input.task.id)
+    let held: PreparedFileRename | null | undefined
+    try {
+      // A supplied digest authorizes only the old source quarantine. Avoid
+      // replaying an unrelated journal before proving this retry applies.
+      if (!input.recoverySha256)
+        await this.createRecovery().recoverTask(input.task.id, lease)
+      await input.verifySource?.()
+      const journals = this.createRepository()
+      const quarantined = journals.quarantinedSource(input.task.id)
+      if (input.recoverySha256 && !quarantined)
+        throw new Error('no quarantined source is awaiting verification')
+      if (
+        quarantined &&
+        (quarantined.plan.sourcePath !== input.sourcePath ||
+          quarantined.plan.targetPath !== targetPath ||
+          quarantined.plan.saveDir !== input.task.saveDir ||
+          input.replacement ||
+          input.contributors.length ||
+          input.metadataOps.length)
+      )
+        throw new Error(
+          'source quarantine does not match the current finalize plan'
+        )
+      const pending = (await journals.listRecoverable(input.task.id)).find(
+        (record) => record.publicationIntent?.method === 'reserved_rename'
+      )
+      if (
+        pending &&
+        (!isOrdinarySuffixRemoval(pending.plan) ||
+          pending.plan.sourcePath !== input.sourcePath ||
+          pending.plan.targetPath !== targetPath ||
+          input.replacement ||
+          input.contributors.length > 0 ||
+          input.metadataOps.length > 0)
+      )
+        throw new Error('pending reserved publication does not match the retry')
+      // H8: identity capture is inside the mutation lease, after every
+      // engine/Host writer has successfully quiesced.
+      if (
+        !pending &&
+        !input.replacement &&
+        input.contributors.length === 0 &&
+        input.metadataOps.length === 0 &&
+        input.sourcePath === `${targetPath}.motrix` &&
+        path.dirname(input.sourcePath) === path.dirname(targetPath)
+      ) {
+        held = await this.options.fs.prepareFileRename?.(
+          input.sourcePath,
+          targetPath
+        )
+      }
+      const verifiedSource = quarantined
+        ? await this.verifyQuarantinedSource(quarantined, input.recoverySha256)
+        : undefined
+      if (quarantined && held) {
+        // Content authority survives closing the guard and is rechecked under
+        // the native publication handle. Keep its digest in the new journal.
+        await held.close()
+        held = null
+      }
+      const sourceIdentity =
+        verifiedSource ??
+        pending?.plan.sourceIdentity ??
+        held?.sourceIdentity ??
+        (await this.captureIdentity(input.sourcePath))
+      const replacement = input.replacement
+        ? {
+            ...input.replacement,
+            identity: await this.captureIdentity(input.replacement.stagedPath),
+          }
+        : undefined
+      const plan =
+        pending?.plan ??
+        freezeHookPlan({
+          planId: randomUUID(),
+          taskId: input.task.id,
+          saveDir: input.task.saveDir,
+          sourcePath: input.sourcePath,
+          targetPath,
+          sourceIdentity,
+          replacement,
+          metadataOps: input.metadataOps,
+          contributors: input.contributors,
+        })
+
+      // Rebase paths must follow the sanitized final component when the
+      // requested target named the same file.
+      const fileRebase =
+        input.fileRebase && input.fileRebase.targetRoot === input.targetPath
+          ? { ...input.fileRebase, targetRoot: targetPath }
+          : input.fileRebase
+
+      return await this.options.session.persistFinalizedArtifact(
+        input.task,
+        input.occurrence,
+        {
+          metadataOps: input.metadataOps,
+          postDeliveries: input.postDeliveries,
+          beforeCommit: input.beforeCommit,
+          fileRebase,
+        },
+        async (commitDatabase) => {
+          const repository = new SqliteFinalizeJournalRepository(
+            this.options.db,
+            {
+              now: this.now,
+              verifiedQuarantine: quarantined ?? undefined,
+              commitTerminalBoundary: (record) => {
+                if (!record.targetIdentity) {
+                  throw new Error('finalize target identity is missing')
+                }
+                commitDatabase({
+                  journalId: record.journalId,
+                  taskId: input.task.id,
+                  targetIdentity: record.targetIdentity,
+                  updatedAt: this.now(),
+                })
+              },
+            }
+          )
+          if (pending) {
+            input.beforeCommit?.()
+            try {
+              await new FinalizeRecovery({
+                repository,
+                leases: this.leases,
+                fs: this.options.fs,
+                exactIdentity: artifactIdentityEquals,
+                sameContent: artifactContentEquals,
+              }).recover(pending, lease)
+            } catch (error) {
+              // Match live publication: a cleanup failure cannot undo the
+              // already committed task. Startup will close the journal later.
+              if (pending.phase !== 'db_committed') throw error
+            }
+            if (
+              !pending.targetIdentity ||
+              (pending.phase !== 'cleaned' && pending.phase !== 'db_committed')
+            )
+              throw new Error('reserved publication recovery did not commit')
+            input.onCommitted?.()
+            return {
+              journalId: pending.journalId,
+              targetPath: pending.plan.targetPath,
+              targetIdentity: pending.targetIdentity,
+              ...(pending.phase === 'db_committed'
+                ? { cleanupPending: true }
+                : {}),
+            }
+          }
+          const committer = new FinalizeCommitter({
+            leases: this.leases,
+            repository,
+            fs: this.options.fs,
+            privatePathFor: (candidate) =>
+              path.join(
+                path.dirname(candidate.targetPath),
+                `.motrix-finalize-${candidate.planId}.target`
+              ),
+            rollbackPathFor: (candidate) =>
+              path.join(
+                path.dirname(candidate.sourcePath),
+                `.motrix-finalize-${candidate.planId}.rollback`
+              ),
+            exactIdentity: artifactIdentityEquals,
+            sameContent: artifactContentEquals,
+          })
+          input.beforeCommit?.()
+          const result = await committer.commit(plan, lease, held ?? undefined)
+          // SQLite's outer durable transaction has committed, but the session
+          // persistence lane is still held. Publish before queued autosaves.
+          input.onCommitted?.()
+          return result
+        }
+      )
+    } finally {
+      try {
+        await held?.close()
+      } finally {
+        await lease.release()
+      }
+    }
+  }
+
+  private async verifyQuarantinedSource(
+    record: FinalizeJournalRecord,
+    sha256?: string
+  ) {
+    const { sourceIdentity: original, sourcePath, targetPath } = record.plan
+    if (original.kind !== 'rename-file')
+      throw new Error('invalid quarantined source')
+    if (await this.options.fs.identity(targetPath, original))
+      throw new Error('final name already exists; inspect it before retrying')
+    const checkStamp = async () => {
+      const current = await this.options.fs.identity(sourcePath, original)
+      if (
+        current?.kind !== 'rename-file' ||
+        current.platformFileId !== original.platformFileId ||
+        current.size !== original.size ||
+        current.birthtimeNs !== original.birthtimeNs
+      )
+        throw new Error(
+          'the original temporary file is missing or was replaced; inspect both names'
+        )
+      if (!sha256 && !artifactIdentityEquals(current, original))
+        throw new FinalizeSourceVerificationError(
+          'temporary file preserved; verify against the publisher’s SHA-256 or download to a new path'
+        )
+    }
+    await checkStamp()
+    const verified = await this.captureIdentity(sourcePath)
+    if (
+      verified.kind !== 'file' ||
+      verified.platformFileId !== original.platformFileId ||
+      verified.size !== original.size
+    )
+      throw new Error('source changed during quarantine verification')
+    if (sha256 && verified.sha256 !== sha256)
+      throw new FinalizeSourceVerificationError(
+        'SHA-256 mismatch; temporary file preserved'
+      )
+    await checkStamp()
+    return verified
+  }
+
+  private async captureIdentity(artifactPath: string) {
+    const identity = await this.options.fs.identity(artifactPath)
+    if (!identity)
+      throw new ArtifactIdentityError(
+        'artifact_missing',
+        `artifact is missing: ${artifactPath}`
+      )
+    return identity
+  }
+
+  /** Strict moves roll back; reserved targets wait for the task's commit boundary. */
+  async recoverAll(): Promise<void> {
+    await this.createRecovery().recoverAll()
+  }
+
+  /** A filesystem-only recovery decision cannot override an unfinished journal. */
+  async hasPendingFinalization(taskId: string): Promise<boolean> {
+    return (
+      this.options.db
+        .prepare(
+          "SELECT 1 FROM plugin_finalize_journals WHERE task_id=? AND phase <> 'cleaned'"
+        )
+        .get(taskId) !== undefined
+    )
+  }
+
+  private createRecovery(): FinalizeRecovery {
+    return new FinalizeRecovery({
+      repository: this.createRepository(),
+      leases: this.leases,
+      fs: this.options.fs,
+      exactIdentity: artifactIdentityEquals,
+      sameContent: artifactContentEquals,
+      rollForwardTargetInstalled: false,
+    })
+  }
+
+  private createRepository(): SqliteFinalizeJournalRepository {
+    return new SqliteFinalizeJournalRepository(this.options.db, {
+      now: this.now,
+      commitTerminalBoundary: () => {
+        throw new Error(
+          'startup recovery is configured to roll back uncommitted targets'
+        )
+      },
+    })
+  }
+}

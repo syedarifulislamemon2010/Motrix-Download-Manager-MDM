@@ -1,0 +1,64 @@
+.cubic-glass-motion {
+  --cubic-glass-cell-rgb: 251 252 255;
+  --cubic-glass-blue-rgb: 88 145 255;
+  --cubic-glass-cyan-rgb: 94 189 245;
+  --cubic-glass-violet-rgb: 190 168 250;
+  --cubic-glass-pink-rgb: 255 165 228;
+  --cubic-glass-warm-rgb: 247 224 174;
+  opacity: 0;
+}
+
+.dark .cubic-glass-motion {
+  --cubic-glass-cell-rgb: 43 44 50;
+  --cubic-glass-blue-rgb: 70 99 176;
+  --cubic-glass-cyan-rgb: 54 119 159;
+  --cubic-glass-violet-rgb: 104 80 160;
+  --cubic-glass-pink-rgb: 164 94 146;
+  --cubic-glass-warm-rgb: 127 108 68;
+}
+
+.cubic-glass-motion[data-renderer="webgl2"] {
+  opacity: 1;
+}
+
+.cubic-glass-motion[data-effect-load-fade="true"] {
+  transition: opacity 520ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+.cubic-glass-motion[data-effect-breathing="true"] canvas[data-ready="true"] {
+  animation: cubic-glass-breathe 9s ease-in-out infinite;
+  will-change: opacity;
+}
+
+@keyframes cubic-glass-breathe {
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.968;
+  }
+}
+
+:where(html[data-reduced-motion="true"])
+  .cubic-glass-motion[data-effect-load-fade="true"] {
+  transition: none;
+}
+
+:where(html[data-reduced-motion="true"])
+  .cubic-glass-motion[data-effect-breathing="true"]
+  canvas[data-ready="true"] {
+  animation: none;
+  will-change: auto;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cubic-glass-motion[data-effect-load-fade="true"] {
+    transition: none;
+  }
+
+  .cubic-glass-motion[data-effect-breathing="true"] canvas[data-ready="true"] {
+    animation: none;
+  }
+}

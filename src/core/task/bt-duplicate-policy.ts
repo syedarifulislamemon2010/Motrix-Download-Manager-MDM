@@ -1,0 +1,341 @@
+import path from 'node:path'
+import { normalizeBtih, parseMagnet } from '@motrix/torrent/magnet'
+import { AppError, ErrorCode } from '@shared/errors'
+import type {
+  TaskCreateCommandResult,
+  TorrentDuplicateConflict,
+} from '@shared/schemas/add-task'
+import { legacyTaskMetadataSchema } from '@shared/schemas/legacy-import'
+import type { DownloadTask } from '@shared/types/task'
+import { TaskInstancePhase, TaskStatus, TaskType } from '@shared/types/task'
+import { getBtOutputReservations } from './bt-output-reservation'
+import { getBtDirectStorageLayout } from './bt-storage-layout'
+import { outputPathIdentity } from './output-path-identity'
+
+const admissionTails = new Map<string, Promise<void>>()
+
+/**
+ * Serialize inspection plus engine admission for one content identity. aria2
+ * registers info hashes globally, so two otherwise-valid requests must not
+ * both observe an empty TaskManager before either publishes its owner.
+ */
+export async function acquireBtInfoHashAdmission(
+  infoHash: string
+): Promise<() => void> {
+  const key = normalizeBtInfoHash(infoHash) ?? infoHash.toLowerCase()
+  return acquireBtAdmission(`hash:${key}`)
+}
+
+/** Final outputs cannot be shared by concurrently admitted torrents. */
+export async function withBtOutputAdmission<T>(
+  saveDir: string,
+  operation: () => Promise<T>
+): Promise<T> {
+  return withBtOutputAdmissions([saveDir], operation)
+}
+
+const outputAdmissions = new Set<{ roots: string[]; settled: Promise<void> }>()
+
+function directoriesOverlap(a: string, b: string): boolean {
+  const within = (root: string, candidate: string) => {
+    const relative = path.relative(root, candidate)
+    return (
+      relative === '' ||
+      (relative !== '..' &&
+        !relative.startsWith(`..${path.sep}`) &&
+        !path.isAbsolute(relative))
+    )
+  }
+  return within(a, b) || within(b, a)
+}
+
+/** Atomically reserve both move roots, including descendant creation, without lock-order cycles. */
+export async function withBtOutputAdmissions<T>(
+  saveDirs: readonly string[],
+  operation: () => Promise<T>
+): Promise<T> {
+  const roots = [...new Set(saveDirs.map(canonicalBtPath))]
+  const predecessors = [...outputAdmissions].filter((entry) =>
+    roots.some((root) =>
+      entry.roots.some((other) => directoriesOverlap(root, other))
+    )
+  )
+  let release!: () => void
+  const entry = {
+    roots,
+    settled: new Promise<void>((resolve) => {
+      release = resolve
+    }),
+  }
+  // Register synchronously before yielding. Every dependency points backwards
+  // in admission order, even for simultaneous A→B and B→A moves.
+  outputAdmissions.add(entry)
+  try {
+    await Promise.all(predecessors.map((previous) => previous.settled))
+    return await operation()
+  } finally {
+    outputAdmissions.delete(entry)
+    release()
+  }
+}
+
+async function acquireBtAdmission(key: string): Promise<() => void> {
+  const previous = admissionTails.get(key) ?? Promise.resolve()
+  let releaseCurrent!: () => void
+  const current = new Promise<void>((resolve) => {
+    releaseCurrent = resolve
+  })
+  admissionTails.set(key, current)
+  await previous
+
+  let released = false
+  return () => {
+    if (released) return
+    released = true
+    releaseCurrent()
+    if (admissionTails.get(key) === current) admissionTails.delete(key)
+  }
+}
+
+export class TorrentDuplicateConflictError extends AppError {
+  constructor(public readonly conflict: TorrentDuplicateConflict) {
+    super(
+      ErrorCode.TorrentDuplicateConflict,
+      `Torrent duplicate conflict: ${conflict.reason}`
+    )
+    this.name = 'TorrentDuplicateConflictError'
+  }
+}
+
+export function taskCreateConflictResult(
+  error: unknown
+): Extract<TaskCreateCommandResult, { outcome: 'conflict' }> | null {
+  return error instanceof TorrentDuplicateConflictError
+    ? { outcome: 'conflict', conflict: error.conflict }
+    : null
+}
+
+export type BtDuplicateAdmission =
+  | { action: 'create' }
+  | { action: 'reuse'; task: DownloadTask; recheck: boolean }
+  | { action: 'conflict'; conflict: TorrentDuplicateConflict }
+
+export interface InspectBtDuplicateInput {
+  infoHash: string
+  saveDir: string
+  selectedFiles: readonly number[]
+  duplicatePolicy: 'reuse' | 'create-copy'
+  excludeTaskId?: string
+}
+
+/** Normalize a magnet/torrent BTIH to the 40-character domain form. */
+export function normalizeBtInfoHash(value: string): string | null {
+  return normalizeBtih(value.trim())
+}
+
+export function extractMagnetInfoHash(uri: string): string | null {
+  try {
+    const { identity } = parseMagnet(uri)
+    return identity.kind === 'v2' ? null : identity.sha1
+  } catch {
+    return null
+  }
+}
+
+export function inspectBtDuplicate(
+  tasks: readonly DownloadTask[],
+  input: InspectBtDuplicateInput
+): BtDuplicateAdmission {
+  const infoHash = normalizeBtInfoHash(input.infoHash)
+  if (!infoHash) return { action: 'create' }
+  const targetDir = canonicalBtPath(input.saveDir)
+  const requestedSelection = normalizeSelection(input.selectedFiles)
+  const candidates = tasks.filter(
+    (task) =>
+      task.id !== input.excludeTaskId &&
+      normalizeBtInfoHash(task.infoHash ?? '') === infoHash &&
+      task.status !== TaskStatus.Removed
+  )
+  if (candidates.length === 0) return { action: 'create' }
+
+  const sameDir = candidates.filter(
+    (task) => btTaskTargetDir(task) === targetDir
+  )
+  const exact = sameDir.find((task) => {
+    const existingSelection = normalizeSelection(task.bt?.selectedFiles ?? [])
+    return (
+      requestedSelection.length > 0 &&
+      selectionsEqual(existingSelection, requestedSelection)
+    )
+  })
+
+  if (
+    input.duplicatePolicy === 'reuse' &&
+    exact &&
+    exact.status !== TaskStatus.Error &&
+    isBtInfoHashRegistered(exact)
+  ) {
+    return {
+      action: 'reuse',
+      task: exact,
+      recheck: false,
+    }
+  }
+
+  // A terminal exact match is reusable only when no other legacy duplicate
+  // still owns the hash in aria2. This matters for pre-policy databases that
+  // may already contain both an errored/completed row and a live downloader.
+  const active = candidates.find(
+    (task) => task.id !== exact?.id && isBtInfoHashRegistered(task)
+  )
+  if (active) {
+    return conflict('active-info-hash', infoHash, targetDir, active, false)
+  }
+
+  if (
+    input.duplicatePolicy === 'reuse' &&
+    exact &&
+    (exact.status === TaskStatus.Completed || exact.status === TaskStatus.Error)
+  ) {
+    return { action: 'reuse', task: exact, recheck: true }
+  }
+
+  const exactOrOtherActive = candidates.find(isBtInfoHashRegistered)
+  if (exactOrOtherActive) {
+    return conflict(
+      'active-info-hash',
+      infoHash,
+      targetDir,
+      exactOrOtherActive,
+      false
+    )
+  }
+
+  if (input.duplicatePolicy === 'reuse' && sameDir.length > 0) {
+    return conflict('selection-mismatch', infoHash, targetDir, sameDir[0], true)
+  }
+
+  return { action: 'create' }
+}
+
+export function reservedBtFinalNames(
+  tasks: readonly DownloadTask[],
+  saveDir: string,
+  excludeTaskId?: string
+): string[] {
+  const targetDir = canonicalBtPath(saveDir)
+  return tasks
+    .filter(
+      (task) => task.id !== excludeTaskId && task.status !== TaskStatus.Removed
+    )
+    .flatMap((task) => {
+      const names: string[] = []
+      if (task.finalName && btTaskTargetDir(task) === targetDir) {
+        names.push(task.finalName)
+        if (getBtDirectStorageLayout(task)?.multiFile === false)
+          names.push(`${task.finalName}.aria2`)
+      }
+      for (const reservation of getBtOutputReservations(task)) {
+        if (canonicalBtPath(path.dirname(reservation.finalPath)) !== targetDir)
+          continue
+        const name = path.basename(reservation.finalPath)
+        names.push(name, `${name}.aria2`)
+      }
+      return names
+    })
+}
+
+export function existingFilesConflict(
+  infoHash: string,
+  targetDir: string
+): TorrentDuplicateConflictError {
+  const normalized = normalizeBtInfoHash(infoHash) ?? infoHash.toLowerCase()
+  return new TorrentDuplicateConflictError({
+    reason: 'existing-files',
+    infoHash: normalized,
+    targetDir: canonicalBtPath(targetDir),
+    existingTaskId: null,
+    existingTaskName: null,
+    existingTaskStatus: null,
+    canCreateCopy: true,
+  })
+}
+
+function conflict(
+  reason: TorrentDuplicateConflict['reason'],
+  infoHash: string,
+  targetDir: string,
+  task: DownloadTask,
+  canCreateCopy: boolean
+): BtDuplicateAdmission {
+  return {
+    action: 'conflict',
+    conflict: {
+      reason,
+      infoHash,
+      targetDir,
+      existingTaskId: task.id,
+      existingTaskName: task.name,
+      existingTaskStatus: task.status,
+      canCreateCopy,
+    },
+  }
+}
+
+export function isBtInfoHashRegistered(task: DownloadTask): boolean {
+  // An untouched import is only a read-only record, never an engine owner.
+  // Keep it in same-directory/path reservations, but permit a separate copy.
+  const instance = task.instances[0]
+  if (
+    !task.engineTaskId &&
+    task.instances.length === 1 &&
+    !instance.gid &&
+    !Object.hasOwn(instance.payload, 'legacyBtActivation')
+  ) {
+    const marker = legacyTaskMetadataSchema.safeParse(
+      instance.payload.legacyImport
+    )
+    if (
+      marker.success &&
+      marker.data.activation === 'inactive' &&
+      marker.data.storagePolicy === 'legacy-read-only'
+    )
+      return false
+  }
+
+  // MetadataReady has already purged its metadata-only aria2 result. Error is
+  // deliberately conservative: a quarantined metadata cleanup can expose an
+  // Error task while its engine row is still alive, so a new owner must wait
+  // for retry/removal instead of gambling on aria2 accepting the hash.
+  return ![
+    TaskStatus.Completed,
+    TaskStatus.MetadataReady,
+    TaskStatus.Removed,
+  ].includes(task.status)
+}
+
+export function btTaskTargetDir(task: DownloadTask): string {
+  const metadataOnly =
+    task.type === TaskType.Magnet &&
+    task.instances.some(
+      (instance) =>
+        instance.phase === TaskInstancePhase.MagnetMetadataResolution
+    )
+  if (metadataOnly && !task.finalName) {
+    return canonicalBtPath(task.finalPath || task.saveDir)
+  }
+  if (task.finalPath) return canonicalBtPath(path.dirname(task.finalPath))
+  return canonicalBtPath(task.saveDir)
+}
+
+export function canonicalBtPath(value: string): string {
+  return outputPathIdentity(value)
+}
+
+function normalizeSelection(values: readonly number[]): number[] {
+  return [...new Set(values)].sort((a, b) => a - b)
+}
+
+function selectionsEqual(a: readonly number[], b: readonly number[]): boolean {
+  return a.length === b.length && a.every((value, index) => value === b[index])
+}

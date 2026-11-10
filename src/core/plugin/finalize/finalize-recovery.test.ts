@@ -1,0 +1,828 @@
+import { constants } from 'node:os'
+import { describe, expect, it, vi } from 'vitest'
+import {
+  type ArtifactIdentity,
+  artifactContentEquals,
+  artifactIdentityEquals,
+  type RenameFileArtifactIdentity,
+} from './artifact-identity'
+import { ArtifactMutationLeaseCoordinator } from './artifact-mutation-lease'
+import { FinalizeFsError } from './filesystem-adapter'
+import type {
+  FinalizeArtifactOperations,
+  FinalizeJournalRecord,
+  FinalizeJournalRepository,
+} from './finalize-committer'
+import { finalizePathsEquivalent } from './finalize-committer'
+import { FinalizeRecovery } from './finalize-recovery'
+
+const sourceIdentity: ArtifactIdentity = {
+  kind: 'file',
+  size: 4,
+  sha256: 'a'.repeat(64),
+  platformFileId: '1:1',
+}
+const targetIdentity: ArtifactIdentity = {
+  ...sourceIdentity,
+  platformFileId: '1:2',
+}
+
+function record(phase: FinalizeJournalRecord['phase']): FinalizeJournalRecord {
+  return {
+    journalId: 'journal-1',
+    phase,
+    plan: {
+      planId: 'journal-1',
+      taskId: 'task-1',
+      saveDir: '/save',
+      sourcePath: '/save/source',
+      targetPath: '/save/target',
+      sourceIdentity,
+      metadataOps: [],
+      contributors: [],
+    },
+    targetIdentity,
+  }
+}
+
+function fixture(
+  initial: Record<string, ArtifactIdentity>,
+  options: {
+    recoverable?: FinalizeJournalRecord[]
+    rollForwardTargetInstalled?: boolean
+  } = {}
+) {
+  const artifacts = new Map(Object.entries(initial))
+  const phases: string[] = []
+  const quarantines: string[] = []
+  const repository: FinalizeJournalRepository = {
+    prepare: vi.fn(),
+    checkpoint: vi.fn(),
+    advance: async (_id, phase) => void phases.push(phase),
+    commitTerminal: async () => void phases.push('db_committed'),
+    quarantine: async (_id, reason) => void quarantines.push(reason),
+    listRecoverable: async () => options.recoverable ?? [],
+  }
+  const fs: FinalizeArtifactOperations = {
+    identity: async (artifactPath) => artifacts.get(artifactPath) ?? null,
+    sameFilesystem: async () => true,
+    materializePrivate: async () => {
+      throw new Error('not used')
+    },
+    moveNoReplace: async (source, _expected, target) => {
+      if (artifacts.has(target)) throw new Error('target exists')
+      const value = artifacts.get(source)
+      if (!value) throw new Error('source missing')
+      artifacts.delete(source)
+      artifacts.set(target, value)
+    },
+    makeDurable: async () => {},
+    removeKnown: async (artifactPath, expected, quarantinePath) => {
+      const original = artifacts.get(artifactPath)
+      const quarantined = artifacts.get(quarantinePath)
+      if (original && quarantined) throw new Error('both removal names exist')
+      const selected = original ?? quarantined
+      if (selected && !artifactIdentityEquals(selected, expected)) {
+        throw new Error('removal identity mismatch')
+      }
+      if (original) artifacts.delete(artifactPath)
+      if (quarantined) artifacts.delete(quarantinePath)
+    },
+  }
+  const recovery = new FinalizeRecovery({
+    repository,
+    fs,
+    leases: new ArtifactMutationLeaseCoordinator([]),
+    exactIdentity: artifactIdentityEquals,
+    sameContent: artifactContentEquals,
+    rollForwardTargetInstalled: options.rollForwardTargetInstalled,
+  })
+  return { artifacts, phases, quarantines, recovery, fs, repository }
+}
+
+describe('rename-only finalize recovery', () => {
+  const original: RenameFileArtifactIdentity = {
+    kind: 'rename-file',
+    size: 1024 * 1024 * 1024,
+    platformFileId: '1:1',
+    mtimeNs: '100',
+    ctimeNs: '200',
+    birthtimeNs: '50',
+  }
+  const installed: RenameFileArtifactIdentity = { ...original, ctimeNs: '300' }
+  const restored: RenameFileArtifactIdentity = { ...original, ctimeNs: '400' }
+
+  function pendingRecord(
+    phase: FinalizeJournalRecord['phase']
+  ): FinalizeJournalRecord {
+    const pending = record(phase)
+    pending.publicationMode = 'move'
+    pending.plan.sourcePath = `${pending.plan.targetPath}.motrix`
+    pending.plan.sourceIdentity = original
+    pending.targetIdentity = phase === 'prepared' ? undefined : installed
+    return pending
+  }
+
+  it.each([true, false])(
+    'rechecks a committed target before reopening a legacy source quarantine (match=%s)',
+    async (matches) => {
+      const pending = pendingRecord('db_committed')
+      pending.quarantineReason = 'renamed source stamp changed'
+      const actual = matches ? installed : { ...installed, ctimeNs: '999' }
+      const state = fixture({ [pending.plan.targetPath]: actual })
+      const resume = vi.fn()
+      state.repository.resumeQuarantined = resume
+      if (matches) {
+        await state.recovery.recover(pending)
+        expect(resume).toHaveBeenCalledOnce()
+        expect(state.phases).toEqual(['cleaned'])
+      } else {
+        await expect(state.recovery.recover(pending)).rejects.toThrow(
+          'quarantined'
+        )
+        expect(resume).not.toHaveBeenCalled()
+        expect(state.phases).toEqual([])
+      }
+      expect(state.artifacts.get(pending.plan.targetPath)).toEqual(actual)
+    }
+  )
+
+  it('preserves an installed target whose post-rename stamp was never checkpointed', async () => {
+    const pending = pendingRecord('prepared')
+    const state = fixture(
+      { [pending.plan.targetPath]: installed },
+      { rollForwardTargetInstalled: false }
+    )
+    const move = vi.spyOn(state.fs, 'moveNoReplace')
+    const remove = vi.spyOn(state.fs, 'removeKnown')
+    await expect(state.recovery.recover(pending)).rejects.toThrow('quarantined')
+    expect(state.artifacts.get(pending.plan.targetPath)).toEqual(installed)
+    expect(state.quarantines).toHaveLength(1)
+    expect(state.phases).toEqual([])
+    expect(move).not.toHaveBeenCalled()
+    expect(remove).not.toHaveBeenCalled()
+  })
+
+  it('rolls back a checkpointed target by rename and records the restored stamp', async () => {
+    const pending = pendingRecord('target_installed')
+    const state = fixture(
+      { [pending.plan.targetPath]: installed },
+      { rollForwardTargetInstalled: false }
+    )
+    state.fs.moveNoReplace = vi.fn(async (source, expected, target) => {
+      expect(expected).toEqual(installed)
+      expect(state.artifacts.has(target)).toBe(false)
+      state.artifacts.delete(source)
+      state.artifacts.set(target, restored)
+      return restored
+    })
+    const remove = vi.spyOn(state.fs, 'removeKnown')
+    await state.recovery.recover(pending)
+    expect([...state.artifacts.entries()]).toEqual([
+      [pending.plan.sourcePath, restored],
+    ])
+    expect(state.repository.checkpoint).toHaveBeenCalledWith(
+      pending.journalId,
+      { restoredSourceIdentity: restored }
+    )
+    expect(state.phases).toEqual(['cleaned'])
+    expect(remove).not.toHaveBeenCalled()
+  })
+
+  it('recognizes a checkpointed rollback without renaming or deleting again', async () => {
+    const pending = {
+      ...pendingRecord('target_installed'),
+      restoredSourceIdentity: restored,
+    }
+    const state = fixture(
+      { [pending.plan.sourcePath]: restored },
+      { rollForwardTargetInstalled: false }
+    )
+    const move = vi.spyOn(state.fs, 'moveNoReplace')
+    const remove = vi.spyOn(state.fs, 'removeKnown')
+    await state.recovery.recover(pending)
+    expect(state.phases).toEqual(['cleaned'])
+    expect(move).not.toHaveBeenCalled()
+    expect(remove).not.toHaveBeenCalled()
+    expect(state.artifacts.get(pending.plan.sourcePath)).toEqual(restored)
+  })
+
+  it.each(['target_installed', 'db_committed'] as const)(
+    'preserves a %s target changed after its persisted stamp',
+    async (phase) => {
+      const pending = pendingRecord(phase)
+      // An in-place edit can retain size, inode and mtime; ctime still matters.
+      const changed = { ...installed, ctimeNs: '999' }
+      const state = fixture(
+        { [pending.plan.targetPath]: changed },
+        { rollForwardTargetInstalled: false }
+      )
+      const move = vi.spyOn(state.fs, 'moveNoReplace')
+      const remove = vi.spyOn(state.fs, 'removeKnown')
+      await expect(state.recovery.recover(pending)).rejects.toThrow(
+        'quarantined'
+      )
+      expect(state.artifacts.get(pending.plan.targetPath)).toEqual(changed)
+      expect(move).not.toHaveBeenCalled()
+      expect(remove).not.toHaveBeenCalled()
+      expect(state.phases).toEqual([])
+    }
+  )
+
+  it('quarantines two surviving names without deleting either artifact', async () => {
+    const pending = pendingRecord('target_installed')
+    const state = fixture(
+      {
+        [pending.plan.sourcePath]: original,
+        [pending.plan.targetPath]: installed,
+      },
+      { rollForwardTargetInstalled: false }
+    )
+    const move = vi.spyOn(state.fs, 'moveNoReplace')
+    const remove = vi.spyOn(state.fs, 'removeKnown')
+    await expect(state.recovery.recover(pending)).rejects.toThrow('quarantined')
+    expect(state.artifacts.size).toBe(2)
+    expect(move).not.toHaveBeenCalled()
+    expect(remove).not.toHaveBeenCalled()
+  })
+
+  it('cleans a committed rename using only its exact target stamp', async () => {
+    const pending = pendingRecord('db_committed')
+    const state = fixture({ [pending.plan.targetPath]: installed })
+    const remove = vi.spyOn(state.fs, 'removeKnown')
+    const move = vi.spyOn(state.fs, 'moveNoReplace')
+    await state.recovery.recover(pending)
+    expect(state.phases).toEqual(['cleaned'])
+    expect(remove).not.toHaveBeenCalled()
+    expect(move).not.toHaveBeenCalled()
+  })
+
+  it('defers recovery when neither rename name is available', async () => {
+    const pending = pendingRecord('prepared')
+    const state = fixture({})
+    await expect(state.recovery.recover(pending)).rejects.toThrow('unavailable')
+    expect(state.quarantines).toEqual([])
+    expect(state.phases).toEqual([])
+  })
+})
+
+describe('FinalizeRecovery', () => {
+  it.each([
+    'ENOENT',
+    'ENODEV',
+    'ESTALE',
+    'ENOTCONN',
+    'ECONNRESET',
+    'ETIMEDOUT',
+  ])('defers startup for %s while explicit retry still fails', async (code) => {
+    const pending = record('prepared')
+    const state = fixture({}, { recoverable: [pending] })
+    state.fs.identity = async () => {
+      throw Object.assign(new Error('storage unavailable'), { code })
+    }
+    await expect(state.recovery.recoverAll()).resolves.toBeUndefined()
+    await expect(state.recovery.recover(pending)).rejects.toThrow(
+      'storage unavailable'
+    )
+    expect(state.quarantines).toEqual([])
+    expect(state.phases).toEqual([])
+  })
+
+  it.skipIf(process.platform === 'win32')(
+    'defers a native stale mount error without discarding its journal',
+    async () => {
+      const pending = record('prepared')
+      const state = fixture({}, { recoverable: [pending] })
+      state.fs.identity = async () => {
+        throw new FinalizeFsError('io_error', 'stale mount', {
+          osError: constants.errno.ESTALE,
+        })
+      }
+      await expect(state.recovery.recoverAll()).resolves.toBeUndefined()
+      expect(state.phases).toEqual([])
+    }
+  )
+
+  it.each(['EIO', 'EACCES', 'EBADF', 'SQLITE_IOERR'])(
+    'does not hide unrelated %s failures during startup',
+    async (code) => {
+      const pending = record('prepared')
+      const state = fixture({}, { recoverable: [pending] })
+      state.fs.identity = async () => {
+        throw Object.assign(new Error('real failure'), { code })
+      }
+      await expect(state.recovery.recoverAll()).rejects.toThrow(
+        'one or more finalize journals failed'
+      )
+    }
+  )
+
+  it.each([
+    'prepared',
+    'target_staged',
+    'target_installed',
+    'db_committed',
+  ] as const)(
+    'keeps %s retryable while all artifacts are unavailable',
+    async (phase) => {
+      const pending = record(phase)
+      pending.publicationMode = 'move'
+      const state = fixture({}, { recoverable: [pending] })
+      await expect(state.recovery.recover(pending)).rejects.toThrow(
+        'unavailable'
+      )
+      await expect(state.recovery.recoverAll()).resolves.toBeUndefined()
+      expect(state.quarantines).toEqual([])
+      expect(state.phases).toEqual([])
+    }
+  )
+
+  it('resumes committed cleanup when its surviving target returns', async () => {
+    const pending = record('db_committed')
+    pending.removalIntent = {
+      artifactPath: '/save/source',
+      quarantinePath: '/save/.remove',
+      identity: sourceIdentity,
+    }
+    const state = fixture({ '/save/source': sourceIdentity })
+    await expect(state.recovery.recover(pending)).rejects.toThrow(
+      'survivor is unavailable'
+    )
+    expect(state.quarantines).toEqual([])
+    expect(state.artifacts.get('/save/source')).toBe(sourceIdentity)
+    state.artifacts.set('/save/target', targetIdentity)
+    await state.recovery.recover(pending)
+    expect([...state.artifacts.keys()]).toEqual(['/save/target'])
+    expect(state.phases).toEqual(['cleaned'])
+  })
+
+  function reservedRecord(): FinalizeJournalRecord {
+    const pending = record('prepared')
+    pending.plan.sourcePath = '/save/target.motrix'
+    pending.publicationMode = 'move'
+    pending.targetIdentity = undefined
+    pending.publicationIntent = {
+      version: 3,
+      method: 'reserved_rename',
+      sourcePath: pending.plan.sourcePath,
+      identity:
+        sourceIdentity as import('./artifact-identity').FileArtifactIdentity,
+      ownership: { volumeId: 'a'.repeat(32), token: 'b'.repeat(64) },
+    }
+    return pending
+  }
+
+  it.each([null, 'f'.repeat(32)])(
+    'defers an unavailable or different reserved volume (%s)',
+    async (volume) => {
+      const pending = reservedRecord()
+      const state = fixture({ '/save/target': targetIdentity })
+      state.fs.reservedVolumeIdentity = async () => volume
+      const identity = vi.spyOn(state.fs, 'identity')
+      await state.recovery.recover(pending)
+      expect(identity).not.toHaveBeenCalled()
+      expect(state.quarantines).toEqual([])
+      expect(state.phases).toEqual([])
+    }
+  )
+
+  it('does not quarantine a volume detached between the probe and file reads', async () => {
+    const state = fixture({})
+    state.fs.reservedVolumeIdentity = vi
+      .fn()
+      .mockResolvedValueOnce('a'.repeat(32))
+      .mockResolvedValue(null)
+    await state.recovery.recover(reservedRecord())
+    expect(state.quarantines).toEqual([])
+    expect(state.phases).toEqual([])
+  })
+
+  it('accepts a changed mount device only with the same volume, inode and content', async () => {
+    const pending = reservedRecord()
+    const current = { ...sourceIdentity, platformFileId: '9:1' }
+    const state = fixture({ '/save/target': current })
+    state.fs.reservedVolumeIdentity = async () => 'a'.repeat(32)
+    await state.recovery.recover(pending)
+    expect(state.quarantines).toEqual([])
+    expect(pending.targetIdentity).toEqual(current)
+    expect(state.phases).toEqual([
+      'target_installed',
+      'db_committed',
+      'cleaned',
+    ])
+  })
+
+  it.each([
+    { ...sourceIdentity, platformFileId: '9:2' },
+    { ...sourceIdentity, platformFileId: '9:1', sha256: 'c'.repeat(64) },
+  ])(
+    'quarantines a foreign installed file on the expected volume: %j',
+    async (foreign) => {
+      const state = fixture({ '/save/target': foreign })
+      state.fs.reservedVolumeIdentity = async () => 'a'.repeat(32)
+      await expect(state.recovery.recover(reservedRecord())).rejects.toThrow(
+        'quarantined'
+      )
+      expect(state.artifacts.get('/save/target')).toEqual(foreign)
+      expect(state.phases).toEqual([])
+    }
+  )
+
+  it('finishes the atomic DB transaction from a verified installed target', async () => {
+    const state = fixture({
+      '/save/source': sourceIdentity,
+      '/save/target': targetIdentity,
+    })
+    await state.recovery.recover(record('target_installed'))
+    expect(state.phases).toEqual(['db_committed', 'cleaned'])
+    expect(state.artifacts.has('/save/source')).toBe(false)
+    expect(state.artifacts.get('/save/target')).toBe(targetIdentity)
+  })
+
+  it('quarantines a committed target mismatch without deleting bytes', async () => {
+    const unknown = { ...targetIdentity, sha256: 'f'.repeat(64) }
+    const state = fixture({ '/save/target': unknown })
+    await expect(
+      state.recovery.recover(record('db_committed'))
+    ).rejects.toThrow('quarantined')
+    expect(state.quarantines).toEqual(['committed target identity mismatch'])
+    expect(state.artifacts.get('/save/target')).toBe(unknown)
+  })
+
+  it('never removes a committed target when source and target are the same path', async () => {
+    const committed = record('db_committed')
+    committed.plan.sourcePath = '/save/target'
+    committed.plan.targetPath = '/save/target'
+    committed.targetIdentity = sourceIdentity
+    const state = fixture({ '/save/target': sourceIdentity })
+
+    await state.recovery.recover(committed)
+
+    expect(state.artifacts.get('/save/target')).toBe(sourceIdentity)
+    expect(state.phases).toEqual(['cleaned'])
+  })
+
+  it('restores a preserved same-path source from target_staged', async () => {
+    const staged = record('target_staged')
+    staged.plan.sourcePath = '/save/target'
+    staged.plan.targetPath = '/save/target'
+    staged.plan.replacement = {
+      pluginId: 'plugin.transcoder',
+      stagedPath: '/plugins/staged',
+      identity: targetIdentity,
+    }
+    staged.rollbackPath = '/save/.rollback'
+    staged.privateTargetPath = '/save/.private'
+    staged.privateTargetIdentity = targetIdentity
+    staged.targetIdentity = undefined
+    const state = fixture({
+      '/save/.rollback': sourceIdentity,
+      '/save/.private': targetIdentity,
+    })
+
+    await state.recovery.recover(staged)
+
+    expect(state.artifacts.get('/save/target')).toBe(sourceIdentity)
+    expect(state.artifacts.has('/save/.rollback')).toBe(false)
+    expect(state.artifacts.has('/save/.private')).toBe(false)
+    expect(state.phases).toEqual(['cleaned'])
+  })
+
+  it('compares Windows paths case-insensitively for recovery cleanup', () => {
+    expect(
+      finalizePathsEquivalent(
+        'C:\\Downloads\\Artifact.bin',
+        'c:\\downloads\\artifact.bin',
+        'win32'
+      )
+    ).toBe(true)
+  })
+
+  it('restores a source moved before the prepared journal phase advanced', async () => {
+    const prepared = record('prepared')
+    prepared.rollbackPath = '/save/.rollback'
+    prepared.targetIdentity = undefined
+    const state = fixture({ '/save/.rollback': sourceIdentity })
+
+    await state.recovery.recover(prepared)
+
+    expect(state.artifacts.get('/save/source')).toBe(sourceIdentity)
+    expect(state.artifacts.has('/save/.rollback')).toBe(false)
+    expect(state.phases).toEqual(['cleaned'])
+  })
+
+  it('cleans a prepared move journal when publication never started', async () => {
+    const prepared = record('prepared')
+    prepared.publicationMode = 'move'
+    prepared.targetIdentity = undefined
+    const state = fixture({ '/save/source': sourceIdentity })
+
+    await state.recovery.recover(prepared)
+
+    expect(state.artifacts.get('/save/source')).toBe(sourceIdentity)
+    expect(state.artifacts.has('/save/target')).toBe(false)
+    expect(state.phases).toEqual(['cleaned'])
+  })
+
+  it('restores a move published before target_installed was journaled', async () => {
+    const prepared = record('prepared')
+    prepared.publicationMode = 'move'
+    prepared.targetIdentity = undefined
+    const state = fixture({ '/save/target': sourceIdentity })
+
+    await state.recovery.recover(prepared)
+
+    expect(state.artifacts.get('/save/source')).toBe(sourceIdentity)
+    expect(state.artifacts.has('/save/target')).toBe(false)
+    expect(state.phases).toEqual(['cleaned'])
+  })
+
+  it('rolls an uncommitted move publication back to its source name', async () => {
+    const installed = record('target_installed')
+    installed.publicationMode = 'move'
+    installed.targetIdentity = sourceIdentity
+    const state = fixture(
+      { '/save/target': sourceIdentity },
+      { rollForwardTargetInstalled: false }
+    )
+
+    await state.recovery.recover(installed)
+
+    expect(state.artifacts.get('/save/source')).toBe(sourceIdentity)
+    expect(state.artifacts.has('/save/target')).toBe(false)
+    expect(state.phases).toEqual(['cleaned'])
+  })
+
+  it('keeps a committed move publication without source cleanup', async () => {
+    const committed = record('db_committed')
+    committed.publicationMode = 'move'
+    committed.targetIdentity = sourceIdentity
+    const state = fixture({ '/save/target': sourceIdentity })
+
+    await state.recovery.recover(committed)
+
+    expect(state.artifacts.get('/save/target')).toBe(sourceIdentity)
+    expect(state.artifacts.has('/save/source')).toBe(false)
+    expect(state.phases).toEqual(['cleaned'])
+  })
+
+  it('rolls back a target moved before target_installed was journaled', async () => {
+    const staged = record('target_staged')
+    staged.privateTargetPath = '/save/.private'
+    staged.privateTargetIdentity = targetIdentity
+    staged.targetIdentity = undefined
+    const state = fixture({
+      '/save/source': sourceIdentity,
+      '/save/target': targetIdentity,
+    })
+
+    await state.recovery.recover(staged)
+
+    expect(state.artifacts.get('/save/source')).toBe(sourceIdentity)
+    expect(state.artifacts.has('/save/target')).toBe(false)
+    expect(state.phases).toEqual(['cleaned'])
+  })
+
+  it.each([undefined, targetIdentity])(
+    'does not close an empty rollback when the original is missing or changed (%s)',
+    async (source) => {
+      const staged = record('target_staged')
+      staged.privateTargetPath = '/save/.private'
+      staged.privateTargetIdentity = targetIdentity
+      const state = fixture(source ? { '/save/source': source } : {})
+      await expect(state.recovery.recover(staged)).rejects.toThrow(
+        source
+          ? 'source changed before install recovery'
+          : 'artifacts are unavailable'
+      )
+      expect(state.phases).not.toContain('cleaned')
+      if (source) expect(state.artifacts.get('/save/source')).toBe(source)
+    }
+  )
+
+  it('removes replacement staging during committed cleanup', async () => {
+    const committed = record('db_committed')
+    committed.plan.replacement = {
+      pluginId: 'plugin.transcoder',
+      stagedPath: '/plugins/staged',
+      identity: targetIdentity,
+    }
+    const state = fixture({
+      '/save/target': targetIdentity,
+      '/plugins/staged': targetIdentity,
+    })
+
+    await state.recovery.recover(committed)
+
+    expect(state.artifacts.has('/plugins/staged')).toBe(false)
+    expect(state.artifacts.get('/save/target')).toBe(targetIdentity)
+    expect(state.phases).toEqual(['cleaned'])
+  })
+
+  it('preserves a same-path original when uncommitted recovery rolls back', async () => {
+    const installed = record('target_installed')
+    installed.plan.sourcePath = '/save/target'
+    installed.plan.targetPath = '/save/target'
+    installed.targetIdentity = sourceIdentity
+    const state = fixture(
+      { '/save/target': sourceIdentity },
+      { rollForwardTargetInstalled: false }
+    )
+
+    await state.recovery.recover(installed)
+
+    expect(state.artifacts.get('/save/target')).toBe(sourceIdentity)
+    expect(state.phases).toEqual(['cleaned'])
+  })
+
+  it('quarantines a changed same-path original during rollback', async () => {
+    const installed = record('target_installed')
+    installed.plan.sourcePath = '/save/target'
+    installed.plan.targetPath = '/save/target'
+    installed.targetIdentity = sourceIdentity
+    const unknown = { ...sourceIdentity, sha256: 'f'.repeat(64) }
+    const state = fixture(
+      { '/save/target': unknown },
+      { rollForwardTargetInstalled: false }
+    )
+
+    await expect(state.recovery.recover(installed)).rejects.toThrow(
+      'quarantined'
+    )
+
+    expect(state.artifacts.get('/save/target')).toBe(unknown)
+    expect(state.quarantines).toEqual([
+      'same-path original changed during recovery',
+    ])
+  })
+
+  it('isolates a quarantined journal and continues recovering later rows', async () => {
+    const corrupted = record('db_committed')
+    const later = record('prepared')
+    later.journalId = 'journal-2'
+    later.plan = {
+      ...later.plan,
+      planId: 'journal-2',
+      taskId: 'task-2',
+      sourcePath: '/save/source-2',
+      targetPath: '/save/target-2',
+    }
+    later.targetIdentity = undefined
+    const unknown = { ...targetIdentity, sha256: 'f'.repeat(64) }
+    const state = fixture(
+      {
+        '/save/target': unknown,
+        '/save/source-2': sourceIdentity,
+      },
+      { recoverable: [corrupted, later] }
+    )
+
+    await state.recovery.recoverAll()
+
+    expect(state.quarantines).toEqual(['committed target identity mismatch'])
+    expect(state.phases).toEqual(['cleaned'])
+  })
+
+  it('resumes an exact persisted removal quarantine after a crash', async () => {
+    const committed = record('db_committed')
+    committed.removalIntent = {
+      artifactPath: '/save/source',
+      quarantinePath: '/save/.motrix-finalize-remove-persisted',
+      identity: sourceIdentity,
+    }
+    const state = fixture({
+      '/save/target': targetIdentity,
+      '/save/.motrix-finalize-remove-persisted': sourceIdentity,
+    })
+
+    await state.recovery.recover(committed)
+
+    expect(state.artifacts.has('/save/.motrix-finalize-remove-persisted')).toBe(
+      false
+    )
+    expect(committed.removalIntent).toBeUndefined()
+    expect(state.phases).toEqual(['cleaned'])
+  })
+
+  it('preserves and quarantines an unknown persisted removal object', async () => {
+    const committed = record('db_committed')
+    committed.removalIntent = {
+      artifactPath: '/save/source',
+      quarantinePath: '/save/.motrix-finalize-remove-persisted',
+      identity: sourceIdentity,
+    }
+    const unknown = { ...sourceIdentity, sha256: 'f'.repeat(64) }
+    const state = fixture({
+      '/save/target': targetIdentity,
+      '/save/.motrix-finalize-remove-persisted': unknown,
+    })
+
+    await expect(state.recovery.recover(committed)).rejects.toThrow(
+      'quarantined'
+    )
+
+    expect(state.artifacts.get('/save/.motrix-finalize-remove-persisted')).toBe(
+      unknown
+    )
+    expect(state.quarantines[0]).toContain(
+      'persisted removal intent identity mismatch'
+    )
+  })
+})
+
+describe('hard-link recovery', () => {
+  it.each(['prepared', 'target_installed', 'db_committed'] as const)(
+    'recovers both names after %s',
+    async (phase) => {
+      const journal = record(phase)
+      journal.publicationMode = 'move'
+      journal.targetIdentity = sourceIdentity
+      journal.publicationIntent = {
+        confirmed: true,
+        version: 1,
+        method: 'hard_link',
+        sourcePath: '/save/source',
+        identity: sourceIdentity,
+      }
+      const state = fixture({
+        '/save/source': sourceIdentity,
+        '/save/target': sourceIdentity,
+      })
+      await state.recovery.recover(journal)
+      expect([...state.artifacts.keys()]).toEqual(['/save/target'])
+      expect(state.quarantines).toEqual([])
+      expect(state.phases.at(-1)).toBe('cleaned')
+    }
+  )
+
+  it('preserves legacy unconfirmed publication intents with both names', async () => {
+    const journal = record('prepared')
+    journal.publicationMode = 'move'
+    journal.publicationIntent = {
+      version: 1,
+      method: 'hard_link',
+      sourcePath: '/save/source',
+      identity: sourceIdentity,
+    }
+    const state = fixture({
+      '/save/source': sourceIdentity,
+      '/save/target': sourceIdentity,
+    })
+    await expect(state.recovery.recover(journal)).rejects.toThrow(
+      'ownership is unconfirmed'
+    )
+    expect(state.artifacts.size).toBe(2)
+  })
+
+  it('does not reinterpret legacy duplicate names as a completed link', async () => {
+    const journal = record('prepared')
+    journal.publicationMode = 'move'
+    const state = fixture({
+      '/save/source': sourceIdentity,
+      '/save/target': sourceIdentity,
+    })
+    await expect(state.recovery.recover(journal)).rejects.toThrow('quarantined')
+    expect(state.artifacts.size).toBe(2)
+  })
+
+  it('does not resume source deletion when the committed output was replaced', async () => {
+    const journal = record('db_committed')
+    journal.publicationMode = 'move'
+    journal.targetIdentity = sourceIdentity
+    journal.publicationIntent = {
+      version: 1,
+      method: 'hard_link',
+      sourcePath: '/save/source',
+      identity: sourceIdentity,
+    }
+    journal.removalIntent = {
+      artifactPath: '/save/source',
+      identity: sourceIdentity,
+      quarantinePath: '/save/quarantine',
+    }
+    const state = fixture({
+      '/save/source': sourceIdentity,
+      '/save/target': targetIdentity,
+    })
+    await expect(state.recovery.recover(journal)).rejects.toThrow('quarantined')
+    expect(state.artifacts.get('/save/source')).toBe(sourceIdentity)
+    expect(state.artifacts.get('/save/target')).toBe(targetIdentity)
+  })
+
+  it('preserves an unrelated target even with a persisted link intent', async () => {
+    const journal = record('prepared')
+    journal.publicationMode = 'move'
+    journal.publicationIntent = {
+      version: 1,
+      method: 'hard_link',
+      sourcePath: '/save/source',
+      identity: sourceIdentity,
+    }
+    const state = fixture({
+      '/save/source': sourceIdentity,
+      '/save/target': targetIdentity,
+    })
+    await expect(state.recovery.recover(journal)).rejects.toThrow('quarantined')
+    expect(state.artifacts.size).toBe(2)
+  })
+})

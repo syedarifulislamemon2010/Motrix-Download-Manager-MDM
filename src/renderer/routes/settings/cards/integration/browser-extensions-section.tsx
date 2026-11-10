@@ -1,0 +1,205 @@
+import { WarningIcon } from '@renderer/components/icons'
+import {
+  Alert,
+  AlertDescription,
+  AlertTitle,
+} from '@renderer/components/ui/alert'
+import { Button } from '@renderer/components/ui/button'
+import {
+  ExtensionPairRequestContent,
+  usePageExtensionPrompts,
+} from '@renderer/components/ui/toast'
+import { browserDisplayName } from '@renderer/lib/browser-name'
+import { useOperatorSession } from '@renderer/lib/operator-auth'
+import { cn } from '@renderer/lib/utils'
+import type { PairedClientInfo } from '@shared/protocol/bridge'
+import { useFormContext } from 'react-hook-form'
+import { useTranslation } from 'react-i18next'
+import { BrowserExtensionInstalls } from './browser-extension-installs'
+import { ClientPairingSwitch } from './client-pairing-switch'
+import type { IntegrationFormValues } from './integration-dialog'
+import { TrustedExtensionsSection } from './trusted-extensions-section'
+import { useBridgeStatus, usePairedExtensions } from './use-bridge'
+
+const IDENTITY_LABEL_KEYS = {
+  official: 'settings.integration.browser.pairToast.identityLabel.official',
+  'attested-non-official':
+    'settings.integration.browser.pairToast.identityLabel.attested',
+  unverified: 'settings.integration.browser.pairToast.identityLabel.unverified',
+} as const
+
+function NasPairingInbox({ accountName }: { accountName: string }) {
+  const { t } = useTranslation()
+  const requests = usePageExtensionPrompts(accountName)
+  return (
+    <section
+      aria-label={t('settings.integration.browser.pendingTitle')}
+      className="space-y-2"
+    >
+      <h3 className="text-xs font-medium">
+        {t('settings.integration.browser.pendingTitle')} ({requests.length})
+      </h3>
+      {requests.length ? (
+        requests.map(({ id, prompt }) => (
+          <div
+            key={id}
+            className="rounded border border-border px-3 py-2 text-xs"
+          >
+            <ExtensionPairRequestContent pairRequest={prompt} inline />
+          </div>
+        ))
+      ) : (
+        <p className="text-xs text-muted-foreground">
+          {t('settings.integration.browser.pendingEmpty')}
+        </p>
+      )}
+    </section>
+  )
+}
+
+export function BrowserExtensionsSection() {
+  const { t } = useTranslation()
+  const form = useFormContext<IntegrationFormValues>()
+  const { items: paired, revoke } = usePairedExtensions()
+  const status = useBridgeStatus()
+  const accountName = useOperatorSession((session) =>
+    session.state === 'authenticated' &&
+    session.status?.mode === 'synologyDsm' &&
+    session.status.clientPairing?.extension
+      ? session.status.username
+      : undefined
+  )
+  // This section lists browser extensions only; cli/agent clients (device-code
+  // paired) are a separate principal kind.
+  const pairedExtensions = paired.filter(
+    (p): p is Extract<PairedClientInfo, { kind: 'extension' }> =>
+      p.kind === 'extension'
+  )
+  const enabled = form.watch('app.browserBridgeEnabled')
+
+  return (
+    <div className="space-y-4">
+      <ClientPairingSwitch browser />
+
+      <BrowserExtensionInstalls />
+      {enabled && accountName && <NasPairingInbox accountName={accountName} />}
+
+      {status?.degraded && (
+        <Alert className="border-amber-500/30 bg-amber-500/10 px-3 py-2 text-[11px] leading-4 text-amber-900 dark:text-amber-200">
+          <WarningIcon />
+          <AlertTitle>
+            {t('settings.integration.browser.degradedPort.title')}
+          </AlertTitle>
+          <AlertDescription className="text-amber-900/80 dark:text-amber-200/80">
+            {t('settings.integration.browser.degradedPort.description', {
+              port: status.port,
+            })}
+          </AlertDescription>
+        </Alert>
+      )}
+
+      {status?.extensionPairingHealth === 'degraded' && (
+        <Alert className="border-destructive/30 bg-destructive/10 px-3 py-2 text-[11px] leading-4 text-destructive">
+          <WarningIcon />
+          <AlertTitle>
+            {t('settings.integration.browser.pairingStateDegraded.title')}
+          </AlertTitle>
+          <AlertDescription className="text-destructive/80">
+            {t('settings.integration.browser.pairingStateDegraded.description')}
+          </AlertDescription>
+        </Alert>
+      )}
+
+      <div
+        className={cn(
+          'space-y-2',
+          !enabled && 'opacity-50 pointer-events-none'
+        )}
+      >
+        <div className="text-xs font-medium text-foreground">
+          {t('settings.integration.browser.pairedTitle')}{' '}
+          <span className="text-muted-foreground">
+            (
+            {pairedExtensions.reduce(
+              (count, item) =>
+                count + Math.max(item.installations?.length ?? 1, 1),
+              0
+            )}
+            )
+          </span>
+        </div>
+        {pairedExtensions.length === 0 ? (
+          <div className="rounded border border-dashed border-border px-3 py-3 text-center text-xs text-muted-foreground">
+            {t('settings.integration.browser.pairedEmpty')}
+          </div>
+        ) : (
+          pairedExtensions.map((it) => (
+            <div
+              key={`${it.browser}:${it.id}`}
+              className="rounded border border-border px-3 py-2 text-xs"
+            >
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex flex-col gap-0.5">
+                  <span className="font-mono">{it.name || it.id}</span>
+                  <span className="text-muted-foreground">
+                    {browserDisplayName(it.browser)}
+                    {` · ${t(IDENTITY_LABEL_KEYS[it.identityTrust])}`}
+                    {it.lastActiveAt
+                      ? ` · ${t('settings.integration.browser.lastActive')}: ${new Date(it.lastActiveAt).toLocaleString()}`
+                      : ''}
+                  </span>
+                </div>
+                <Button
+                  type="button"
+                  size="xs"
+                  variant="outline"
+                  onClick={() =>
+                    void revoke({
+                      kind: 'extension',
+                      browser: it.browser,
+                      extensionId: it.id,
+                    })
+                  }
+                  disabled={it.status === 'cleanup-pending'}
+                >
+                  {t(
+                    it.status === 'cleanup-pending'
+                      ? 'settings.integration.browser.disconnecting'
+                      : (it.installations?.length ?? 0) > 1
+                        ? 'settings.integration.browser.revokeAll'
+                        : 'settings.integration.browser.revoke'
+                  )}
+                </Button>
+              </div>
+              {it.installations && it.installations.length > 0 && (
+                <ul className="mt-2 space-y-1 border-t border-border pt-2">
+                  {it.installations.map((installation, index) => (
+                    <li
+                      key={installation.id}
+                      className="flex items-center justify-between gap-3"
+                    >
+                      <span>
+                        {t('settings.integration.browser.profile', {
+                          number: index + 1,
+                        })}
+                      </span>
+                      <span className="text-muted-foreground">
+                        {t(
+                          installation.connected
+                            ? 'settings.integration.browser.connected'
+                            : 'settings.integration.browser.disconnected'
+                        )}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          ))
+        )}
+      </div>
+
+      <TrustedExtensionsSection disabled={!enabled} />
+    </div>
+  )
+}

@@ -1,0 +1,733 @@
+import { createHash } from 'node:crypto'
+import type { RenameFileArtifactIdentity } from '@core/plugin/finalize/artifact-identity'
+import type { FinalizeJournalRecord } from '@core/plugin/finalize/finalize-committer'
+import { reservationMarker } from '@core/plugin/finalize/reserved-identity'
+import Database from 'better-sqlite3'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { SqliteFinalizeJournalRepository } from './finalize-journal-repository'
+import { migrate } from './migrations'
+
+describe('SqliteFinalizeJournalRepository', () => {
+  let db: Database.Database
+
+  beforeEach(() => {
+    db = new Database(':memory:')
+    migrate(db)
+  })
+
+  afterEach(() => db.close())
+
+  function renameRecord(): FinalizeJournalRecord {
+    const record = makeRecord('rename-only')
+    record.publicationMode = 'move'
+    record.plan.sourcePath = `${record.plan.targetPath}.motrix`
+    record.plan.sourceIdentity = {
+      kind: 'rename-file',
+      size: 1024 * 1024 * 1024,
+      platformFileId: '1:1',
+      mtimeNs: '100',
+      ctimeNs: '200',
+      birthtimeNs: '50',
+    }
+    return record
+  }
+
+  it('exposes a quarantined rename to normal recovery only when it has a target checkpoint', async () => {
+    const repository = new SqliteFinalizeJournalRepository(db, {
+      commitTerminalBoundary: vi.fn(),
+    })
+    const record = renameRecord()
+    await repository.prepare(record)
+    await repository.quarantine(
+      record.journalId,
+      'renamed source stamp changed'
+    )
+    expect(await repository.listRecoverable()).toEqual([])
+    expect(repository.quarantinedSource(record.plan.taskId)).toEqual(record)
+    db.prepare(
+      "UPDATE plugin_finalize_journals SET phase='prepared', quarantine_reason=NULL WHERE plan_id=?"
+    ).run(record.journalId)
+    const targetIdentity = {
+      ...(record.plan.sourceIdentity as RenameFileArtifactIdentity),
+      ctimeNs: '999',
+    }
+    await repository.advance(record.journalId, 'target_installed', {
+      targetIdentity,
+    })
+    await repository.quarantine(
+      record.journalId,
+      'renamed source stamp changed'
+    )
+    const [candidate] = await repository.listRecoverable()
+    expect(candidate.targetIdentity).toEqual(targetIdentity)
+    await repository.resumeQuarantined(candidate)
+    expect((await repository.listRecoverable())[0].phase).toBe(
+      'target_installed'
+    )
+  })
+
+  it('round-trips metadata-only identities and the changed stamp after rename', async () => {
+    const repository = new SqliteFinalizeJournalRepository(db, {
+      commitTerminalBoundary: vi.fn(),
+    })
+    const record = renameRecord()
+    await repository.prepare(record)
+    expect(await repository.listRecoverable()).toEqual([record])
+    const installed = {
+      ...(record.plan.sourceIdentity as RenameFileArtifactIdentity),
+      ctimeNs: '300',
+    }
+    await repository.advance(record.journalId, 'target_installed', {
+      targetIdentity: installed,
+    })
+    const restored = { ...installed, ctimeNs: '400' }
+    await repository.checkpoint(record.journalId, {
+      restoredSourceIdentity: restored,
+    })
+    expect(await repository.listRecoverable()).toEqual([
+      {
+        ...record,
+        phase: 'target_installed',
+        targetIdentity: installed,
+        restoredSourceIdentity: restored,
+      },
+    ])
+  })
+
+  it.each([
+    'copy',
+    'plugin',
+    'metadata',
+    'replacement',
+    'nonordinary-name',
+  ] as const)(
+    'rejects metadata-only journal identities outside the rename scope: %s',
+    async (scenario) => {
+      const repository = new SqliteFinalizeJournalRepository(db, {
+        commitTerminalBoundary: vi.fn(),
+      })
+      const record = renameRecord()
+      if (scenario === 'copy') record.publicationMode = 'copy'
+      if (scenario === 'plugin') record.plan.contributors = ['example.test']
+      if (scenario === 'metadata')
+        record.plan.metadataOps = [
+          { pluginId: 'example.test', op: 'set', key: 'note', value: 'value' },
+        ]
+      if (scenario === 'replacement')
+        record.plan.replacement = {
+          pluginId: 'example.test',
+          stagedPath: '/downloads/replacement',
+          identity: fileIdentity('replacement'),
+        }
+      if (scenario === 'nonordinary-name')
+        record.plan.sourcePath = `${record.plan.targetPath}.part`
+      await expect(repository.prepare(record)).rejects.toThrow()
+      expect(await repository.listRecoverable()).toEqual([])
+    }
+  )
+
+  it.each(['size', 'platformFileId', 'mtimeNs', 'birthtimeNs'] as const)(
+    'rejects a metadata target checkpoint that changes %s',
+    async (field) => {
+      const repository = new SqliteFinalizeJournalRepository(db, {
+        commitTerminalBoundary: vi.fn(),
+      })
+      const record = renameRecord()
+      await repository.prepare(record)
+      const installed = {
+        ...(record.plan.sourceIdentity as RenameFileArtifactIdentity),
+        ctimeNs: '300',
+      }
+      const altered = {
+        ...installed,
+        [field]: field === 'size' ? installed.size + 1 : '999',
+      }
+      await expect(
+        repository.advance(record.journalId, 'target_installed', {
+          targetIdentity: altered,
+        })
+      ).rejects.toThrow()
+      expect((await repository.listRecoverable())[0].phase).toBe('prepared')
+    }
+  )
+
+  it('rejects copy, link and removal intents for metadata-only journals', async () => {
+    const repository = new SqliteFinalizeJournalRepository(db, {
+      commitTerminalBoundary: vi.fn(),
+    })
+    const record = renameRecord()
+    await repository.prepare(record)
+    await expect(
+      repository.checkpoint(record.journalId, { publicationMode: 'copy' })
+    ).rejects.toThrow()
+    await expect(
+      repository.checkpoint(record.journalId, {
+        privateTargetPath: '/downloads/private',
+      })
+    ).rejects.toThrow()
+    await expect(
+      repository.checkpoint(record.journalId, {
+        publicationIntent: {
+          version: 1,
+          method: 'hard_link',
+          sourcePath: record.plan.sourcePath,
+          identity: record.plan.sourceIdentity,
+        },
+      })
+    ).rejects.toThrow()
+    await expect(
+      repository.checkpoint(record.journalId, {
+        removalIntent: {
+          artifactPath: record.plan.sourcePath,
+          quarantinePath: '/downloads/.remove',
+          identity: record.plan.sourceIdentity,
+        },
+      })
+    ).rejects.toThrow()
+  })
+
+  it('persists a prepared move-to-copy switch and rejects switching after mutation', async () => {
+    const repository = new SqliteFinalizeJournalRepository(db, {
+      commitTerminalBoundary: vi.fn(),
+    })
+    const record = { ...makeRecord(), publicationMode: 'move' as const }
+    await repository.prepare(record)
+    await repository.checkpoint(record.journalId, { publicationMode: 'copy' })
+    expect((await repository.listRecoverable())[0].publicationMode).toBe('copy')
+    await expect(
+      repository.checkpoint(record.journalId, { publicationMode: 'move' })
+    ).rejects.toThrow('after mutation')
+  })
+
+  it.each(['target_staged', 'target_installed', 'db_committed'] as const)(
+    'rejects a mode switch in %s',
+    async (phase) => {
+      const repository = new SqliteFinalizeJournalRepository(db, {
+        commitTerminalBoundary: vi.fn(),
+      })
+      const record = { ...makeRecord(), publicationMode: 'move' as const }
+      await repository.prepare(record)
+      db.prepare(
+        'UPDATE plugin_finalize_journals SET phase=?, plan_json=?'
+      ).run(phase, JSON.stringify({ ...record, phase }))
+      await expect(
+        repository.checkpoint(record.journalId, { publicationMode: 'copy' })
+      ).rejects.toThrow('after mutation')
+    }
+  )
+
+  it('syncs critical journal writes and restores the connection setting after a failed commit', async () => {
+    db.pragma('synchronous = NORMAL')
+    db.pragma('fullfsync = OFF')
+    const flushes: number[] = []
+    db.function('observe_fullfsync', (level) => {
+      flushes.push(level as number)
+      return 1
+    })
+    const writes: number[] = []
+    db.function('observe_sync', (level) => {
+      writes.push(level as number)
+      return 1
+    })
+    db.exec(`
+      CREATE TRIGGER observe_insert BEFORE INSERT ON plugin_finalize_journals BEGIN SELECT observe_sync(synchronous) FROM pragma_synchronous; SELECT observe_fullfsync(fullfsync) FROM pragma_fullfsync; END;
+      CREATE TRIGGER observe_update BEFORE UPDATE ON plugin_finalize_journals BEGIN SELECT observe_sync(synchronous) FROM pragma_synchronous; SELECT observe_fullfsync(fullfsync) FROM pragma_fullfsync; END;
+    `)
+    const repository = new SqliteFinalizeJournalRepository(db, {
+      commitTerminalBoundary: () => {
+        expect(db.pragma('synchronous', { simple: true })).toBe(2)
+        expect(db.pragma('fullfsync', { simple: true })).toBe(
+          process.platform === 'darwin' ? 1 : 0
+        )
+        throw new Error('terminal transaction failed')
+      },
+    })
+    const record = { ...makeRecord(), publicationMode: 'move' as const }
+    await repository.prepare(record)
+    await repository.checkpoint(record.journalId, {
+      targetIdentity: record.plan.sourceIdentity,
+    })
+    await repository.advance(record.journalId, 'target_installed')
+    await expect(repository.commitTerminal(record)).rejects.toThrow(
+      'terminal transaction failed'
+    )
+    expect(writes).toEqual([2, 2, 2])
+    expect(flushes).toEqual(
+      Array(3).fill(process.platform === 'darwin' ? 1 : 0)
+    )
+    expect(db.pragma('fullfsync', { simple: true })).toBe(0)
+    expect(db.pragma('synchronous', { simple: true })).toBe(1)
+    expect((await repository.listRecoverable())[0].phase).toBe(
+      'target_installed'
+    )
+  })
+
+  it('preserves stronger caller durability settings', async () => {
+    db.pragma('synchronous = EXTRA')
+    db.pragma('fullfsync = ON')
+    const repository = new SqliteFinalizeJournalRepository(db, {
+      commitTerminalBoundary: vi.fn(),
+    })
+    await repository.prepare(makeRecord())
+    expect(db.pragma('synchronous', { simple: true })).toBe(3)
+    expect(db.pragma('fullfsync', { simple: true })).toBe(1)
+  })
+
+  it('does not claim a durable checkpoint inside a caller-owned transaction', async () => {
+    const repository = new SqliteFinalizeJournalRepository(db, {
+      commitTerminalBoundary: vi.fn(),
+    })
+    db.exec('BEGIN')
+    try {
+      await expect(repository.prepare(makeRecord())).rejects.toThrow(
+        'outermost transaction'
+      )
+    } finally {
+      db.exec('ROLLBACK')
+    }
+    expect(await repository.listRecoverable()).toEqual([])
+  })
+
+  it('validates reserved publication scope and the exact empty placeholder contract', async () => {
+    const repository = new SqliteFinalizeJournalRepository(db, {
+      commitTerminalBoundary: vi.fn(),
+    })
+    const record = { ...makeRecord(), publicationMode: 'move' as const }
+    record.plan.sourcePath = `${record.plan.targetPath}.motrix`
+    const identity = {
+      kind: 'file' as const,
+      size: 4,
+      sha256: 'a'.repeat(64),
+      platformFileId: '1:1',
+    }
+    record.plan.sourceIdentity = identity
+    await repository.prepare(record)
+    const publicationIntent = {
+      version: 2 as const,
+      method: 'reserved_rename' as const,
+      sourcePath: record.plan.sourcePath,
+      identity,
+    }
+    await repository.checkpoint(record.journalId, { publicationIntent })
+    const reservationIdentity = {
+      ...identity,
+      size: 0,
+      platformFileId: '1:2',
+      sha256:
+        'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855',
+    }
+    await repository.checkpoint(record.journalId, {
+      publicationIntent: { ...publicationIntent, reservationIdentity },
+    })
+    expect((await repository.listRecoverable())[0].publicationIntent).toEqual({
+      ...publicationIntent,
+      reservationIdentity,
+    })
+    await expect(
+      repository.checkpoint(record.journalId, {
+        publicationIntent: {
+          ...publicationIntent,
+          reservationIdentity: identity,
+        },
+      })
+    ).rejects.toThrow()
+    await expect(
+      repository.checkpoint(record.journalId, {
+        privateTargetPath: '/downloads/private',
+      })
+    ).rejects.toThrow('ordinary suffix removal')
+  })
+
+  it('persists token ownership before reservation creation and rejects unrelated markers', async () => {
+    const repository = new SqliteFinalizeJournalRepository(db, {
+      commitTerminalBoundary: vi.fn(),
+    })
+    const record = { ...makeRecord(), publicationMode: 'move' as const }
+    record.plan.sourcePath = `${record.plan.targetPath}.motrix`
+    const identity = {
+      kind: 'file' as const,
+      size: 4,
+      sha256: 'a'.repeat(64),
+      platformFileId: '1:1',
+    }
+    record.plan.sourceIdentity = identity
+    await repository.prepare(record)
+    const ownership = { volumeId: 'c'.repeat(32), token: 'd'.repeat(64) }
+    const publicationIntent = {
+      version: 3 as const,
+      method: 'reserved_rename' as const,
+      sourcePath: record.plan.sourcePath,
+      identity,
+      ownership,
+    }
+    await repository.checkpoint(record.journalId, { publicationIntent })
+    expect((await repository.listRecoverable())[0].publicationIntent).toEqual(
+      publicationIntent
+    )
+    const marker = reservationMarker(ownership.token)
+    const reservationIdentity = {
+      ...identity,
+      platformFileId: '1:2',
+      size: marker.length,
+      sha256: createHash('sha256').update(marker).digest('hex'),
+    }
+    await repository.checkpoint(record.journalId, {
+      publicationIntent: { ...publicationIntent, reservationIdentity },
+    })
+    await expect(
+      repository.checkpoint(record.journalId, {
+        publicationIntent: {
+          ...publicationIntent,
+          reservationIdentity: {
+            ...reservationIdentity,
+            sha256: '0'.repeat(64),
+          },
+        },
+      })
+    ).rejects.toThrow('persisted token')
+    await repository.checkpoint(record.journalId, {
+      targetIdentity: { ...identity, platformFileId: '9:1' },
+    })
+    await expect(
+      repository.checkpoint(record.journalId, {
+        targetIdentity: { ...identity, platformFileId: '9:2' },
+      })
+    ).rejects.toThrow('downloaded content')
+  })
+
+  it('persists and validates the installation source of a hard-link intent', async () => {
+    const repository = new SqliteFinalizeJournalRepository(db, {
+      commitTerminalBoundary: vi.fn(),
+    })
+    const record = makeRecord()
+    record.publicationMode = 'move'
+    record.plan.sourceIdentity = {
+      kind: 'file',
+      size: 4,
+      sha256: 'a'.repeat(64),
+      platformFileId: '1:1',
+    }
+    await repository.prepare(record)
+    const publicationIntent = {
+      version: 1 as const,
+      method: 'hard_link' as const,
+      sourcePath: record.plan.sourcePath,
+      identity: record.plan.sourceIdentity,
+    }
+    await repository.checkpoint(record.journalId, { publicationIntent })
+    expect((await repository.listRecoverable())[0].publicationIntent).toEqual(
+      publicationIntent
+    )
+    await repository.checkpoint(record.journalId, {
+      publicationIntent: { ...publicationIntent, confirmed: true },
+    })
+    expect(
+      (await repository.listRecoverable())[0].publicationIntent?.confirmed
+    ).toBe(true)
+    await expect(
+      repository.checkpoint(record.journalId, {
+        publicationIntent: { ...publicationIntent, sourcePath: '/unrelated' },
+      })
+    ).rejects.toThrow('installation source')
+    const persisted = {
+      ...record,
+      publicationIntent: { ...publicationIntent, version: 99 },
+    }
+    db.prepare('UPDATE plugin_finalize_journals SET plan_json=?').run(
+      JSON.stringify(persisted)
+    )
+    expect(await repository.listRecoverable()).toEqual([])
+    expect(
+      db.prepare('SELECT phase FROM plugin_finalize_journals').get()
+    ).toEqual({ phase: 'quarantined' })
+  })
+
+  it('reopens only the exact legacy journal snapshot selected for recovery', async () => {
+    const repository = new SqliteFinalizeJournalRepository(db, {
+      commitTerminalBoundary: vi.fn(),
+    })
+    const record = { ...makeRecord('legacy'), publicationMode: 'move' as const }
+    await repository.prepare(record)
+    await repository.quarantine(
+      record.journalId,
+      'compensation failed after I/O failure'
+    )
+    const [candidate] = await repository.listRecoverable(record.plan.taskId)
+    expect(candidate).toMatchObject({
+      quarantineReason: 'compensation failed after I/O failure',
+    })
+    expect(await repository.listRecoverable('another-task')).toEqual([])
+    await repository.quarantine(
+      record.journalId,
+      'compensation failed after a newer I/O failure'
+    )
+    await expect(repository.resumeQuarantined(candidate)).rejects.toThrow(
+      'changed before recovery'
+    )
+    expect(
+      db.prepare('SELECT phase FROM plugin_finalize_journals').get()
+    ).toEqual({ phase: 'quarantined' })
+    const [current] = await repository.listRecoverable(record.plan.taskId)
+    await repository.resumeQuarantined(current)
+    expect(
+      db
+        .prepare(
+          'SELECT phase, quarantine_reason FROM plugin_finalize_journals'
+        )
+        .get()
+    ).toEqual({ phase: 'prepared', quarantine_reason: null })
+  })
+
+  it('persists the monotonic finalize state and all recovery identities', async () => {
+    const commitTerminalBoundary = vi.fn((record: FinalizeJournalRecord) => {
+      db.prepare(
+        `UPDATE plugin_finalize_journals SET phase='db_committed',
+         plan_json=?, updated_at=5 WHERE plan_id=? AND phase='target_installed'`
+      ).run(
+        JSON.stringify({ ...record, phase: 'db_committed' }),
+        record.journalId
+      )
+    })
+    const repository = new SqliteFinalizeJournalRepository(db, {
+      now: () => 5,
+      commitTerminalBoundary,
+    })
+    const record = makeRecord()
+
+    await repository.prepare(record)
+    await repository.advance(record.journalId, 'target_staged', {
+      privateTargetPath: '/downloads/.private',
+      privateTargetIdentity: fileIdentity('private'),
+    })
+    await repository.advance(record.journalId, 'target_installed', {
+      targetIdentity: fileIdentity('target'),
+    })
+    const installed = (await repository.listRecoverable())[0]
+    await repository.commitTerminal(installed)
+    await repository.advance(record.journalId, 'cleaned')
+
+    expect(commitTerminalBoundary).toHaveBeenCalledOnce()
+    expect(await repository.listRecoverable()).toEqual([])
+    expect(
+      db
+        .prepare(
+          `SELECT phase, target_identity_json
+         FROM plugin_finalize_journals WHERE plan_id=?`
+        )
+        .get(record.journalId)
+    ).toEqual({
+      phase: 'cleaned',
+      target_identity_json: JSON.stringify(fileIdentity('target')),
+    })
+  })
+
+  it('persists the direct-move mode and its shorter phase transition', async () => {
+    const repository = new SqliteFinalizeJournalRepository(db, {
+      now: () => 5,
+      commitTerminalBoundary: vi.fn(),
+    })
+    const record = {
+      ...makeRecord('plan-move'),
+      publicationMode: 'move' as const,
+    }
+
+    await repository.prepare(record)
+    await repository.advance(record.journalId, 'target_installed', {
+      targetIdentity: record.plan.sourceIdentity,
+    })
+
+    expect(await repository.listRecoverable()).toEqual([
+      {
+        ...record,
+        phase: 'target_installed',
+        targetIdentity: record.plan.sourceIdentity,
+      },
+    ])
+  })
+
+  it('rolls the journal and terminal callback writes back on failure', async () => {
+    db.exec('CREATE TABLE terminal_probe (value TEXT NOT NULL)')
+    const repository = new SqliteFinalizeJournalRepository(db, {
+      now: () => 5,
+      commitTerminalBoundary: () => {
+        db.prepare(
+          `INSERT INTO terminal_probe (value) VALUES ('written')`
+        ).run()
+        throw new Error('terminal transaction failed')
+      },
+    })
+    const record = makeRecord('plan-rollback')
+    await repository.prepare(record)
+    await repository.advance(record.journalId, 'target_staged', {
+      privateTargetPath: '/downloads/.private',
+      privateTargetIdentity: fileIdentity('private'),
+    })
+    await repository.advance(record.journalId, 'target_installed', {
+      targetIdentity: fileIdentity('target'),
+    })
+
+    await expect(repository.commitTerminal(record)).rejects.toThrow(
+      'terminal transaction failed'
+    )
+    expect(
+      db.prepare(`SELECT phase FROM plugin_finalize_journals`).get()
+    ).toEqual({ phase: 'target_installed' })
+    expect(db.prepare(`SELECT * FROM terminal_probe`).all()).toEqual([])
+  })
+
+  it('quarantines a structurally malformed recovery row', async () => {
+    const repository = new SqliteFinalizeJournalRepository(db, {
+      now: () => 5,
+      commitTerminalBoundary: vi.fn(),
+    })
+    const record = makeRecord('plan-corrupt')
+    await repository.prepare(record)
+    db.prepare(
+      `UPDATE plugin_finalize_journals SET plan_json='{}' WHERE plan_id=?`
+    ).run(record.journalId)
+
+    expect(await repository.listRecoverable()).toEqual([])
+    expect(
+      db
+        .prepare(
+          `SELECT phase, quarantine_reason FROM plugin_finalize_journals
+         WHERE plan_id=?`
+        )
+        .get(record.journalId)
+    ).toMatchObject({
+      phase: 'quarantined',
+      quarantine_reason: expect.stringContaining('invalid persisted'),
+    })
+  })
+
+  it('persists action intent without advancing the recovery phase', async () => {
+    const repository = new SqliteFinalizeJournalRepository(db, {
+      now: () => 5,
+      commitTerminalBoundary: vi.fn(),
+    })
+    const record = makeRecord('plan-checkpoint')
+
+    await repository.prepare(record)
+    await repository.checkpoint(record.journalId, {
+      rollbackPath: '/downloads/.rollback',
+      privateTargetPath: '/downloads/.private',
+    })
+
+    expect(await repository.listRecoverable()).toEqual([
+      {
+        ...record,
+        rollbackPath: '/downloads/.rollback',
+        privateTargetPath: '/downloads/.private',
+      },
+    ])
+    expect(
+      db
+        .prepare(`SELECT phase FROM plugin_finalize_journals WHERE plan_id=?`)
+        .get(record.journalId)
+    ).toEqual({ phase: 'prepared' })
+  })
+
+  it('replaces a cleaned journal when the same task retries finalize', async () => {
+    const repository = new SqliteFinalizeJournalRepository(db, {
+      now: () => 5,
+      commitTerminalBoundary: vi.fn(),
+    })
+    const first = makeRecord('plan-first')
+    await repository.prepare(first)
+    await repository.advance(first.journalId, 'cleaned')
+
+    const retry = makeRecord('plan-retry')
+    await repository.prepare(retry)
+
+    expect(await repository.listRecoverable()).toEqual([retry])
+    expect(
+      db.prepare(`SELECT plan_id FROM plugin_finalize_journals`).all()
+    ).toEqual([{ plan_id: 'plan-retry' }])
+  })
+
+  it('can quarantine a committed cleanup mismatch for manual recovery', async () => {
+    const repository = new SqliteFinalizeJournalRepository(db, {
+      now: () => 5,
+      commitTerminalBoundary: vi.fn(),
+    })
+    const record = makeRecord('plan-committed-mismatch')
+    await repository.prepare(record)
+    db.prepare(
+      `UPDATE plugin_finalize_journals
+       SET phase='db_committed', plan_json=? WHERE plan_id=?`
+    ).run(
+      JSON.stringify({ ...record, phase: 'db_committed' }),
+      record.journalId
+    )
+
+    await repository.quarantine(record.journalId, 'cleanup mismatch')
+
+    expect(
+      db
+        .prepare(
+          `SELECT phase, quarantine_reason FROM plugin_finalize_journals
+           WHERE plan_id=?`
+        )
+        .get(record.journalId)
+    ).toEqual({
+      phase: 'quarantined',
+      quarantine_reason: 'cleanup mismatch',
+    })
+  })
+
+  it('persists and clears a committed removal intent across restart', async () => {
+    const repository = new SqliteFinalizeJournalRepository(db, {
+      now: () => 5,
+      commitTerminalBoundary: vi.fn(),
+    })
+    const record = makeRecord('plan-removal-intent')
+    const committed = { ...record, phase: 'db_committed' as const }
+    await repository.prepare(record)
+    db.prepare(
+      `UPDATE plugin_finalize_journals
+       SET phase='db_committed', plan_json=? WHERE plan_id=?`
+    ).run(JSON.stringify(committed), record.journalId)
+    const removalIntent = {
+      artifactPath: '/downloads/input.part',
+      quarantinePath: '/downloads/.motrix-finalize-remove-exact',
+      identity: fileIdentity('source'),
+    }
+
+    await repository.checkpoint(record.journalId, { removalIntent })
+    expect((await repository.listRecoverable())[0].removalIntent).toEqual(
+      removalIntent
+    )
+    await repository.checkpoint(record.journalId, {
+      removalIntent: undefined,
+    })
+    expect(
+      (await repository.listRecoverable())[0].removalIntent
+    ).toBeUndefined()
+  })
+})
+
+function makeRecord(journalId = 'plan-1'): FinalizeJournalRecord {
+  return {
+    journalId,
+    phase: 'prepared',
+    plan: {
+      planId: journalId,
+      taskId: 'task-1',
+      saveDir: '/downloads',
+      sourcePath: '/downloads/input.part',
+      targetPath: '/downloads/output.bin',
+      sourceIdentity: fileIdentity('source'),
+      metadataOps: [],
+      contributors: [],
+    },
+  }
+}
+
+function fileIdentity(seed: string) {
+  return {
+    kind: 'file' as const,
+    size: seed.length,
+    sha256: seed.padEnd(64, '0'),
+    platformFileId: `device:${seed}`,
+  }
+}

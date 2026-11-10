@@ -1,0 +1,659 @@
+import '@test-utils/dom-animations'
+import '@testing-library/jest-dom/vitest'
+import { i18n } from '@renderer/lib/i18n'
+import { SUPPORTED_LOCALES } from '@shared/constants/locales'
+import { Commands } from '@shared/protocol/commands'
+import { Queries } from '@shared/protocol/queries'
+import { render, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
+
+vi.mock('@renderer/lib/transport', () => ({
+  transport: {
+    invoke: vi.fn(async () => undefined),
+    on: vi.fn(),
+    off: vi.fn(),
+    platform: 'darwin',
+  },
+}))
+
+import { transport } from '@renderer/lib/transport'
+import { AppearanceDialog } from './appearance-dialog'
+
+class MockResizeObserver {
+  observe() {}
+  unobserve() {}
+  disconnect() {}
+}
+
+const FIXTURE = {
+  app: {
+    theme: 'system',
+    sidebarColor: 'gray',
+    language: 'en-US',
+    traySpeedometer: false,
+    runMode: 1, // RunMode.Standard — numeric enum
+    lightweightMode: false,
+    launchAtStartup: false,
+    defaultSaveDir: '/x',
+    notifyOnComplete: true,
+    protocols: { magnet: true },
+    magnetFileSelection: true,
+    liquidGlassEffect: false,
+  },
+}
+
+beforeAll(() => {
+  // jsdom doesn't implement these; Base UI Select needs them.
+  if (!HTMLElement.prototype.hasPointerCapture) {
+    HTMLElement.prototype.hasPointerCapture = () => false
+  }
+  if (!HTMLElement.prototype.releasePointerCapture) {
+    HTMLElement.prototype.releasePointerCapture = () => {}
+  }
+  if (!HTMLElement.prototype.scrollIntoView) {
+    HTMLElement.prototype.scrollIntoView = () => {}
+  }
+})
+
+beforeEach(async () => {
+  await i18n.changeLanguage('en-US')
+  Object.defineProperty(transport, 'platform', {
+    configurable: true,
+    value: 'darwin',
+  })
+  vi.stubGlobal('ResizeObserver', MockResizeObserver)
+  vi.mocked(transport.invoke).mockReset()
+  vi.mocked(transport.invoke).mockImplementation(async (channel: string) => {
+    if (channel === Queries.GetSettings) return FIXTURE
+    return { saved: true, requiresRestart: false, changedRestartKeys: [] }
+  })
+})
+
+describe('<AppearanceDialog>', () => {
+  it.each([
+    {
+      platform: 'darwin',
+      action: 'Save',
+      label: 'Show download progress in Dock',
+    },
+    {
+      platform: 'darwin',
+      action: 'Cancel',
+      label: 'Show download progress in Dock',
+    },
+    {
+      platform: 'win32',
+      action: 'Save',
+      label: 'Show download progress in taskbar',
+    },
+    {
+      platform: 'win32',
+      action: 'Cancel',
+      label: 'Show download progress in taskbar',
+    },
+  ])(
+    'keeps $platform progress in the draft until $action',
+    async ({ platform, action, label }) => {
+      Object.defineProperty(transport, 'platform', {
+        configurable: true,
+        value: platform,
+      })
+      const onClose = vi.fn()
+      render(
+        <AppearanceDialog
+          open
+          onClose={onClose}
+          labelKey="settings.cards.appearance.title"
+          descKey="settings.cards.appearance.desc"
+        />
+      )
+      const user = userEvent.setup()
+      await waitFor(() =>
+        expect(screen.getByRole('button', { name: 'Save' })).toBeEnabled()
+      )
+      const control = screen.getByRole('switch', {
+        name: label,
+      })
+      expect(control).not.toBeChecked()
+      await user.click(control)
+      expect(transport.invoke).not.toHaveBeenCalledWith(
+        Commands.UpdateSettings,
+        expect.anything()
+      )
+      await user.click(screen.getByRole('button', { name: action }))
+      if (action === 'Save') {
+        expect(transport.invoke).toHaveBeenCalledWith(Commands.UpdateSettings, {
+          app: { showDownloadProgress: true },
+        })
+      } else {
+        expect(transport.invoke).not.toHaveBeenCalledWith(
+          Commands.UpdateSettings,
+          expect.anything()
+        )
+      }
+      expect(onClose).toHaveBeenCalledOnce()
+    }
+  )
+
+  it.each(['linux', 'web'])(
+    'preserves the hidden download progress preference on %s when saving another field',
+    async (platform) => {
+      Object.defineProperty(transport, 'platform', {
+        configurable: true,
+        value: platform,
+      })
+      vi.mocked(transport.invoke).mockImplementation(async (channel) => {
+        if (channel === Queries.GetSettings)
+          return {
+            ...FIXTURE,
+            app: { ...FIXTURE.app, showDownloadProgress: true },
+          }
+        return { saved: true, requiresRestart: false, changedRestartKeys: [] }
+      })
+      render(
+        <AppearanceDialog
+          open
+          onClose={vi.fn()}
+          labelKey="settings.cards.appearance.title"
+          descKey="settings.cards.appearance.desc"
+        />
+      )
+      await waitFor(() =>
+        expect(screen.getByRole('button', { name: 'Save' })).toBeEnabled()
+      )
+      expect(
+        screen.queryByRole('switch', { name: /Show download progress/ })
+      ).toBeNull()
+      const user = userEvent.setup()
+      await user.click(screen.getByRole('switch', { name: 'Reduce motion' }))
+      await user.click(screen.getByRole('button', { name: 'Save' }))
+      expect(transport.invoke).toHaveBeenCalledWith(Commands.UpdateSettings, {
+        app: { reduceMotion: true },
+      })
+    }
+  )
+
+  it('keeps acceleration changes in the draft until Save', async () => {
+    render(
+      <AppearanceDialog
+        open
+        onClose={vi.fn()}
+        labelKey="settings.cards.appearance.title"
+        descKey="settings.cards.appearance.desc"
+      />
+    )
+    const user = userEvent.setup({ pointerEventsCheck: 0 })
+    const control = await screen.findByRole('switch', {
+      name: 'Hardware acceleration',
+    })
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: 'Save' })).toBeEnabled()
+    )
+    expect(control).toBeChecked()
+    await user.click(control)
+    expect(transport.invoke).not.toHaveBeenCalledWith(
+      Commands.UpdateSettings,
+      expect.anything()
+    )
+    await user.click(screen.getByRole('button', { name: 'Save' }))
+    expect(transport.invoke).toHaveBeenCalledWith(Commands.UpdateSettings, {
+      app: { hardwareAcceleration: false },
+    })
+  })
+
+  it('hides the hardware acceleration switch in the web UI', async () => {
+    Object.defineProperty(transport, 'platform', {
+      configurable: true,
+      value: 'web',
+    })
+    render(
+      <AppearanceDialog
+        open
+        onClose={vi.fn()}
+        labelKey="settings.cards.appearance.title"
+        descKey="settings.cards.appearance.desc"
+      />
+    )
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: 'Save' })).toBeEnabled()
+    )
+    expect(
+      screen.queryByRole('switch', { name: 'Hardware acceleration' })
+    ).not.toBeInTheDocument()
+  })
+  it('pins Follow system first and saves the preference only after confirmation', async () => {
+    render(
+      <AppearanceDialog
+        open
+        onClose={vi.fn()}
+        labelKey="settings.cards.appearance.title"
+        descKey="settings.cards.appearance.desc"
+      />
+    )
+    const user = userEvent.setup({ pointerEventsCheck: 0 })
+    const select = await screen.findByRole('combobox', { name: 'Language' })
+    await waitFor(() => expect(select).toHaveTextContent('English'))
+    await user.click(select)
+    const options = await screen.findAllByRole('option')
+    expect(options.map((option) => option.textContent)).toEqual([
+      'Follow system',
+      ...SUPPORTED_LOCALES.map(({ nativeName }) => nativeName),
+    ])
+    await user.click(options[0]!)
+    expect(select).toHaveTextContent('Follow system')
+    expect(transport.invoke).not.toHaveBeenCalledWith(
+      Commands.UpdateSettings,
+      expect.anything()
+    )
+    await user.click(screen.getByRole('button', { name: 'Save' }))
+    expect(transport.invoke).toHaveBeenCalledWith(Commands.UpdateSettings, {
+      app: { language: 'system' },
+    })
+  })
+
+  it('restores the saved system preference instead of displaying a resolved language', async () => {
+    vi.mocked(transport.invoke).mockResolvedValue({
+      ...FIXTURE,
+      app: { ...FIXTURE.app, language: 'system' },
+      resolvedLanguage: 'fr',
+    })
+    render(
+      <AppearanceDialog
+        open
+        onClose={vi.fn()}
+        labelKey="settings.cards.appearance.title"
+        descKey="settings.cards.appearance.desc"
+      />
+    )
+    await waitFor(() =>
+      expect(
+        screen.getByRole('combobox', { name: 'Language' })
+      ).toHaveTextContent('Follow system')
+    )
+  })
+
+  it.each(['darwin', 'win32', 'web'])(
+    'hides the Linux tray color selector on %s',
+    async (platform) => {
+      Object.defineProperty(transport, 'platform', {
+        configurable: true,
+        value: platform,
+      })
+      render(
+        <AppearanceDialog
+          open
+          onClose={vi.fn()}
+          labelKey="settings.cards.appearance.title"
+          descKey="settings.cards.appearance.desc"
+        />
+      )
+      await screen.findByRole('combobox', { name: 'Theme' })
+      expect(
+        screen.queryByRole('combobox', { name: 'Tray icon color' })
+      ).toBeNull()
+    }
+  )
+
+  it('lets Linux users save only the tray color without changing the application theme', async () => {
+    Object.defineProperty(transport, 'platform', {
+      configurable: true,
+      value: 'linux',
+    })
+    render(
+      <AppearanceDialog
+        open
+        onClose={vi.fn()}
+        labelKey="settings.cards.appearance.title"
+        descKey="settings.cards.appearance.desc"
+      />
+    )
+    const select = await screen.findByRole('combobox', {
+      name: 'Tray icon color',
+    })
+    expect(select).toHaveTextContent('Follow app theme')
+    const user = userEvent.setup({ pointerEventsCheck: 0 })
+    await user.click(select)
+    await user.click(
+      await screen.findByRole('option', { name: 'Light icon (dark panel)' })
+    )
+    expect(transport.invoke).not.toHaveBeenCalledWith(
+      Commands.UpdateSettings,
+      expect.anything()
+    )
+    await user.click(screen.getByRole('button', { name: 'Save' }))
+    expect(transport.invoke).toHaveBeenCalledWith(Commands.UpdateSettings, {
+      app: { trayIconColor: 'light' },
+    })
+  })
+
+  it('hydrates the saved Linux tray color and discards edits on cancel', async () => {
+    Object.defineProperty(transport, 'platform', {
+      configurable: true,
+      value: 'linux',
+    })
+    vi.mocked(transport.invoke).mockResolvedValue({
+      app: { ...FIXTURE.app, trayIconColor: 'dark' },
+    })
+    render(
+      <AppearanceDialog
+        open
+        onClose={vi.fn()}
+        labelKey="settings.cards.appearance.title"
+        descKey="settings.cards.appearance.desc"
+      />
+    )
+    const select = await screen.findByRole('combobox', {
+      name: 'Tray icon color',
+    })
+    await waitFor(() =>
+      expect(select).toHaveTextContent('Dark icon (light panel)')
+    )
+    const user = userEvent.setup({ pointerEventsCheck: 0 })
+    await user.click(select)
+    await user.click(
+      await screen.findByRole('option', { name: 'Follow app theme' })
+    )
+    await user.click(screen.getByRole('button', { name: 'Cancel' }))
+    expect(transport.invoke).not.toHaveBeenCalledWith(
+      Commands.UpdateSettings,
+      expect.anything()
+    )
+  })
+  it('saves only the glass preference on macOS after confirmation', async () => {
+    render(
+      <AppearanceDialog
+        open
+        onClose={vi.fn()}
+        labelKey="settings.cards.appearance.title"
+        descKey="settings.cards.appearance.desc"
+      />
+    )
+    const toggle = await screen.findByRole('switch', {
+      name: 'Liquid Glass',
+    })
+    const user = userEvent.setup()
+    await user.click(toggle)
+    expect(transport.invoke).not.toHaveBeenCalledWith(
+      Commands.UpdateSettings,
+      expect.anything()
+    )
+    await user.click(screen.getByRole('button', { name: /save/i }))
+    expect(transport.invoke).toHaveBeenCalledWith(Commands.UpdateSettings, {
+      app: { liquidGlassEffect: true },
+    })
+  })
+
+  it.each(['win32', 'linux', 'web'])(
+    'hides glass on %s even when enabled in saved settings',
+    async (platform) => {
+      Object.defineProperty(transport, 'platform', {
+        configurable: true,
+        value: platform,
+      })
+      vi.mocked(transport.invoke).mockImplementation(async (channel) => {
+        if (channel === Queries.GetSettings)
+          return { app: { ...FIXTURE.app, liquidGlassEffect: true } }
+        return { saved: true }
+      })
+      render(
+        <AppearanceDialog
+          open
+          onClose={vi.fn()}
+          labelKey="settings.cards.appearance.title"
+          descKey="settings.cards.appearance.desc"
+        />
+      )
+      await waitFor(() =>
+        expect(screen.getByRole('button', { name: 'Save' })).toBeEnabled()
+      )
+      expect(
+        screen.queryByRole('switch', { name: 'Liquid Glass' })
+      ).not.toBeInTheDocument()
+      const user = userEvent.setup()
+      await user.click(screen.getByRole('switch', { name: 'Reduce motion' }))
+      await user.click(screen.getByRole('button', { name: 'Save' }))
+      expect(transport.invoke).toHaveBeenCalledWith(Commands.UpdateSettings, {
+        app: { reduceMotion: true },
+      })
+    }
+  )
+
+  it('does not show desktop run-mode settings on the web', async () => {
+    Object.defineProperty(transport, 'platform', {
+      configurable: true,
+      value: 'web',
+    })
+    render(
+      <AppearanceDialog
+        open
+        onClose={vi.fn()}
+        labelKey="settings.cards.appearance.title"
+        descKey="settings.cards.appearance.desc"
+      />
+    )
+
+    await waitFor(() => {
+      expect(
+        screen.getByRole('combobox', { name: 'Theme' })
+      ).toBeInTheDocument()
+    })
+    expect(screen.queryByRole('combobox', { name: 'Show app in' })).toBeNull()
+    expect(
+      screen.queryByRole('combobox', { name: 'When opening Motrix' })
+    ).toBeNull()
+  })
+
+  it('hydrates and submits dirty changes', async () => {
+    const onClose = vi.fn()
+    render(
+      <AppearanceDialog
+        open
+        onClose={onClose}
+        labelKey="settings.cards.appearance.title"
+        descKey="settings.cards.appearance.desc"
+      />
+    )
+    await waitFor(() => screen.getAllByRole('combobox').length > 0)
+    // Disable pointer-events check; Base UI Select toggles `pointer-events: none`
+    // on the body during open transitions and jsdom doesn't model it reliably.
+    const user = userEvent.setup({ pointerEventsCheck: 0 })
+    // First combobox is the Theme select.
+    const [themeTrigger] = screen.getAllByRole('combobox')
+    await user.click(themeTrigger)
+    const darkOption = await screen.findByRole('option', { name: /dark/i })
+    await user.click(darkOption)
+    await user.click(screen.getByRole('button', { name: /save/i }))
+    expect(transport.invoke).toHaveBeenCalledWith(Commands.UpdateSettings, {
+      app: { theme: 'dark' },
+    })
+    expect(onClose).toHaveBeenCalled()
+  })
+
+  it.each(['darwin', 'win32', 'linux', 'web'])(
+    'defaults reduce motion to off and saves only its dirty field on %s',
+    async (platform) => {
+      Object.defineProperty(transport, 'platform', {
+        configurable: true,
+        value: platform,
+      })
+      render(
+        <AppearanceDialog
+          open
+          onClose={vi.fn()}
+          labelKey="settings.cards.appearance.title"
+          descKey="settings.cards.appearance.desc"
+        />
+      )
+      const reduceMotion = await screen.findByRole('switch', {
+        name: 'Reduce motion',
+      })
+      const user = userEvent.setup()
+      expect(reduceMotion).not.toBeChecked()
+      await user.click(reduceMotion)
+      expect(transport.invoke).not.toHaveBeenCalledWith(
+        Commands.UpdateSettings,
+        expect.anything()
+      )
+      await user.click(screen.getByRole('button', { name: 'Save' }))
+      expect(transport.invoke).toHaveBeenCalledWith(Commands.UpdateSettings, {
+        app: { reduceMotion: true },
+      })
+    }
+  )
+
+  it('hydrates reduce motion and discards unsaved changes on cancel', async () => {
+    vi.mocked(transport.invoke).mockResolvedValue({
+      app: { ...FIXTURE.app, reduceMotion: true },
+    })
+    const onClose = vi.fn()
+    render(
+      <AppearanceDialog
+        open
+        onClose={onClose}
+        labelKey="settings.cards.appearance.title"
+        descKey="settings.cards.appearance.desc"
+      />
+    )
+    const reduceMotion = await screen.findByRole('switch', {
+      name: 'Reduce motion',
+    })
+    await waitFor(() => expect(reduceMotion).toBeChecked())
+    const user = userEvent.setup()
+    await user.click(reduceMotion)
+    await user.click(screen.getByRole('button', { name: 'Cancel' }))
+    expect(onClose).toHaveBeenCalled()
+    expect(transport.invoke).not.toHaveBeenCalledWith(
+      Commands.UpdateSettings,
+      expect.anything()
+    )
+  })
+
+  it('leaves language application to the mounted settings synchronizer', async () => {
+    render(
+      <AppearanceDialog
+        open
+        onClose={vi.fn()}
+        labelKey="settings.cards.appearance.title"
+        descKey="settings.cards.appearance.desc"
+      />
+    )
+    await waitFor(() => screen.getAllByRole('combobox').length > 0)
+    const user = userEvent.setup({ pointerEventsCheck: 0 })
+    const [, languageTrigger] = screen.getAllByRole('combobox')
+
+    await user.click(languageTrigger)
+    await user.click(await screen.findByRole('option', { name: '简体中文' }))
+    await user.click(screen.getByRole('button', { name: /save/i }))
+
+    expect(transport.invoke).toHaveBeenCalledWith(Commands.UpdateSettings, {
+      app: { language: 'zh-CN' },
+    })
+    expect(i18n.resolvedLanguage).toBe('en-US')
+  })
+})
+
+it('saves only the chosen unit system when Apply is clicked', async () => {
+  const user = userEvent.setup({ pointerEventsCheck: 0 })
+  render(
+    <AppearanceDialog
+      open
+      onClose={vi.fn()}
+      labelKey="settings.cards.appearance.title"
+      descKey="settings.cards.appearance.desc"
+    />
+  )
+  const select = await screen.findByRole('combobox', {
+    name: 'Size and speed units',
+  })
+  await user.click(select)
+  await user.click(
+    await screen.findByRole('option', { name: 'Binary (MiB, GiB · 1024)' })
+  )
+  expect(transport.invoke).not.toHaveBeenCalledWith(
+    Commands.UpdateSettings,
+    expect.anything()
+  )
+  await user.click(screen.getByRole('button', { name: /apply|save/i }))
+  expect(transport.invoke).toHaveBeenCalledWith(Commands.UpdateSettings, {
+    app: { byteUnitSystem: 'binary' },
+  })
+})
+
+describe('sidebar color', () => {
+  it('previews a color and saves only its dirty preference', async () => {
+    const { useSidebarColorState } = await import('@renderer/lib/sidebar-color')
+    useSidebarColorState.setState({ saved: 'gray', preview: null, revision: 0 })
+    const close = vi.fn()
+    render(
+      <AppearanceDialog
+        open
+        onClose={close}
+        labelKey="settings.cards.appearance.title"
+        descKey="settings.cards.appearance.desc"
+      />
+    )
+    const user = userEvent.setup()
+    await user.click(await screen.findByRole('radio', { name: 'Cyan' }))
+    expect(useSidebarColorState.getState().preview).toBe('cyan')
+    expect(transport.invoke).not.toHaveBeenCalledWith(
+      Commands.UpdateSettings,
+      expect.anything()
+    )
+    await user.click(screen.getByRole('button', { name: 'Save' }))
+    expect(transport.invoke).toHaveBeenCalledWith(Commands.UpdateSettings, {
+      app: { sidebarColor: 'cyan' },
+    })
+    expect(useSidebarColorState.getState().saved).toBe('cyan')
+    expect(close).toHaveBeenCalledOnce()
+  })
+  it('hydrates a saved color and discards the preview when closed', async () => {
+    const { useSidebarColorState } = await import('@renderer/lib/sidebar-color')
+    vi.mocked(transport.invoke).mockResolvedValue({
+      app: { ...FIXTURE.app, sidebarColor: 'pink' },
+    })
+    const props = {
+      onClose: vi.fn(),
+      labelKey: 'settings.cards.appearance.title',
+      descKey: 'settings.cards.appearance.desc',
+    }
+    const { rerender } = render(<AppearanceDialog {...props} open />)
+    await waitFor(() =>
+      expect(screen.getByRole('radio', { name: 'Pink' })).toBeChecked()
+    )
+    const user = userEvent.setup()
+    await user.click(screen.getByRole('radio', { name: 'Blue' }))
+    expect(useSidebarColorState.getState().preview).toBe('blue')
+    await user.click(screen.getByRole('button', { name: 'Cancel' }))
+    rerender(<AppearanceDialog {...props} open={false} />)
+    expect(useSidebarColorState.getState().preview).toBeNull()
+    expect(transport.invoke).not.toHaveBeenCalledWith(
+      Commands.UpdateSettings,
+      expect.anything()
+    )
+  })
+  it('keeps a failed save editable and supports keyboard selection', async () => {
+    const close = vi.fn()
+    vi.mocked(transport.invoke).mockImplementation(async (channel) => {
+      if (channel === Queries.GetSettings) return FIXTURE
+      throw new Error('save failed')
+    })
+    render(
+      <AppearanceDialog
+        open
+        onClose={close}
+        labelKey="settings.cards.appearance.title"
+        descKey="settings.cards.appearance.desc"
+      />
+    )
+    const user = userEvent.setup()
+    const gray = await screen.findByRole('radio', { name: 'Gray' })
+    gray.focus()
+    await user.keyboard('{ArrowLeft}')
+    expect(screen.getByRole('radio', { name: 'Cyan' })).toBeChecked()
+    await user.click(screen.getByRole('button', { name: 'Save' }))
+    expect(await screen.findByRole('alert')).toBeVisible()
+    expect(close).not.toHaveBeenCalled()
+    expect(screen.getByRole('radio', { name: 'Cyan' })).toBeEnabled()
+  })
+})
