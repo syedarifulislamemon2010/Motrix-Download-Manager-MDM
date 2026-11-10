@@ -59,6 +59,7 @@ export const Commands = {
   // re-add and unresolved magnets to a fresh metadata-resolution attempt.
   RetryTasks: 'command:retryTasks',
   StopSeedingTasks: 'command:stopSeedingTasks',
+  SetTaskSpeedLimit: 'command:setTaskSpeedLimit',
   SetSelectedFiles: 'command:setSelectedFiles',
   MutateDirectoryPreferences: 'command:mutateDirectoryPreferences',
   SaveGeneralSettings: 'command:saveGeneralSettings',

@@ -68,6 +68,7 @@ import {
   matchesTaskMenuShortcut,
   taskMenuShortcuts,
 } from './task-menu-shortcuts'
+import { TaskSpeedLimitDialog } from './task-speed-limit-dialog'
 import { useTaskInspectorState } from './use-task-inspector-state'
 import { useDownloadsView } from './view-preferences'
 
@@ -128,11 +129,21 @@ export function TaskActionsMenu({
     task: DownloadTask
     mode: BtStorageRequest['mode']
   } | null>(null)
+  const [speedLimitDialog, setSpeedLimitDialog] = useState<DownloadTask | null>(
+    null
+  )
   const storage = storageDialog ? (
     <BtStorageDialog
       key={`${storageDialog.task.id}-${storageDialog.mode}`}
       {...storageDialog}
       onClose={() => setStorageDialog(null)}
+    />
+  ) : null
+  const speedLimitElement = speedLimitDialog ? (
+    <TaskSpeedLimitDialog
+      key={speedLimitDialog.id}
+      task={speedLimitDialog}
+      onClose={() => setSpeedLimitDialog(null)}
     />
   ) : null
   const [menuOpen, setMenuOpen] = useState(false)
@@ -391,6 +402,11 @@ export function TaskActionsMenu({
               {t('panel.downloads.action.selectFiles')}
             </DropdownMenuItem>
           )}
+          {single && (
+            <DropdownMenuItem onClick={() => setSpeedLimitDialog(single)}>
+              {t('settings.downloads.speedLimit.title')}
+            </DropdownMenuItem>
+          )}
           {canChooseFiles && (
             <DropdownMenuItem
               onClick={() => {
@@ -536,8 +552,8 @@ export function TaskActionsMenu({
   if (children)
     return (
       <>
-        {' '}
         {storage}
+        {speedLimitElement}
         <ContextMenu
           open={menuOpen}
           onOpenChange={(open) => {
@@ -575,6 +591,7 @@ export function TaskActionsMenu({
   return (
     <>
       {storage}
+      {speedLimitElement}
       <DropdownMenu
         open={menuOpen}
         onOpenChange={(open) => {

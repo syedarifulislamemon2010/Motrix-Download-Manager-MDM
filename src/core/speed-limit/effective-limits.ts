@@ -66,3 +66,17 @@ export function computeEffectiveLimits(
   }
   return { download: minCap(downs), upload: minCap(ups) }
 }
+
+/**
+ * Compute the effective speed limits for a specific task given its configured limits
+ * and current global speed limits. 0 means unlimited.
+ * The effective limit is min(task, global), where 0 means unlimited.
+ */
+export function computeEffectiveTaskLimits(
+  taskLimits: { download?: number; upload?: number },
+  globalLimits: SpeedLimitProfile
+): SpeedLimitProfile {
+  const download = minCap([taskLimits.download ?? 0, globalLimits.download])
+  const upload = minCap([taskLimits.upload ?? 0, globalLimits.upload])
+  return { download, upload }
+}

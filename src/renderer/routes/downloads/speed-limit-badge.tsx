@@ -21,11 +21,12 @@ import { useSpeedLimitState } from '@renderer/hooks/use-speed-limit-state'
 import { saveSettings } from '@renderer/lib/settings-save'
 import { cn } from '@renderer/lib/utils'
 import type { TurtleState } from '@shared/types/settings'
+import type { DownloadTask } from '@shared/types/task'
 import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router'
 
-export function SpeedLimitBadge() {
+export function SpeedLimitBadge({ task }: { task?: DownloadTask | null } = {}) {
   const { t } = useTranslation()
   const { formatSpeedLimit } = useByteFormat()
   const state = useSpeedLimitState()
@@ -113,6 +114,23 @@ export function SpeedLimitBadge() {
               <p>
                 {t(`panel.dashboard.speedLimit.reason.${state.activeReason}`)}
               </p>
+            )}
+            {task && (task.dlLimit > 0 || task.ulLimit > 0) && (
+              <div className="pt-1 mt-1 border-t border-border/50 text-xs">
+                <p className="font-semibold text-muted-foreground truncate max-w-44">
+                  {task.name}
+                </p>
+                {task.dlLimit > 0 && (
+                  <p>
+                    {t('task.add.dlLimit')}: {formatSpeedLimit(task.dlLimit)}
+                  </p>
+                )}
+                {task.ulLimit > 0 && (
+                  <p>
+                    {t('task.add.ulLimit')}: {formatSpeedLimit(task.ulLimit)}
+                  </p>
+                )}
+              </div>
             )}
           </div>
         </TooltipContent>

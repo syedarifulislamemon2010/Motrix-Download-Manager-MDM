@@ -38,6 +38,7 @@ import { createDirectoryPreferencesHandlers } from '@core/settings/directory-pre
 import { createSaveDownloadsSettingsHandler } from '@core/settings/downloads-settings'
 import { createSaveGeneralSettingsHandler } from '@core/settings/general-settings'
 import type { SettingsManager } from '@core/settings/settings-manager'
+import { computeEffectiveLimits } from '@core/speed-limit/effective-limits'
 import {
   clearStoppedTasks,
   pauseAllTasks,
@@ -72,6 +73,7 @@ import type { FinalNamePicker } from '@core/task/final-name-picker'
 import type { MediaMetaStore } from '@core/task/media-meta-store'
 import type { OccurrenceDispatcher } from '@core/task/occurrences/occurrence-dispatcher'
 import { createSetSelectedFilesHandler } from '@core/task/set-selected-files'
+import { createSetTaskSpeedLimitHandler } from '@core/task/set-task-speed-limit'
 import {
   admitTaskCreateRequest,
   taskCreateSourceFailure,
@@ -836,6 +838,20 @@ export function buildServerCommandHandlers(
       engine: adapter,
       db: motrixDatabase,
       eventBus,
+      runTaskMutation,
+    }),
+
+    [Commands.SetTaskSpeedLimit]: createSetTaskSpeedLimitHandler({
+      authorizeTaskWrite: ctx.authorizeTaskWrite,
+      taskManager,
+      engine: adapter,
+      persistTask: ctx.persistTask ?? (async () => {}),
+      eventBus,
+      getGlobalSpeedLimits: () =>
+        computeEffectiveLimits(settingsManager.get().speedLimit, {
+          now: new Date(),
+          videoAppRunning: false,
+        }),
       runTaskMutation,
     }),
 

@@ -51,6 +51,7 @@ import { createDirectoryPreferencesHandlers } from '@core/settings/directory-pre
 import { createSaveDownloadsSettingsHandler } from '@core/settings/downloads-settings'
 import { createSaveGeneralSettingsHandler } from '@core/settings/general-settings'
 import type { SettingsManager } from '@core/settings/settings-manager'
+import { computeEffectiveLimits } from '@core/speed-limit/effective-limits'
 import {
   clearStoppedTasks,
   pauseAllTasks,
@@ -182,6 +183,7 @@ import { torrentCreatorHandlers } from './commands/create-torrent'
 import { createOpenTaskFileHandler } from './commands/open-task-file'
 import { createRevealInFolderHandler } from './commands/reveal-in-folder'
 import { createSetSelectedFilesHandler } from './commands/set-selected-files'
+import { createSetTaskSpeedLimitHandler } from './commands/set-task-speed-limit'
 import { NatCommandHandlers } from './nat-commands'
 import { applyNatPrivacyGate } from './nat-settings-gate'
 import { registerTrustedIpcHandler } from './trusted-ipc'
@@ -946,6 +948,19 @@ export function buildCommandHandlers(ctx: CommandContext): CommandHandlerMap {
       engine: adapter,
       db: motrixDatabase,
       eventBus,
+      runTaskMutation,
+    }),
+
+    [Commands.SetTaskSpeedLimit]: createSetTaskSpeedLimitHandler({
+      taskManager,
+      engine: adapter,
+      persistTask,
+      eventBus,
+      getGlobalSpeedLimits: () =>
+        computeEffectiveLimits(settingsManager.get().speedLimit, {
+          now: new Date(),
+          videoAppRunning: false,
+        }),
       runTaskMutation,
     }),
 

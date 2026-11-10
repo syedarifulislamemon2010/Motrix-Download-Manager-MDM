@@ -1,3 +1,4 @@
+import path from 'node:path'
 import type { TaskInstanceRow, TaskRow } from '@core/session/motrix-database'
 import { DownloadErrorCode } from '@shared/errors'
 import {
@@ -151,6 +152,14 @@ describe('taskRowToDownloadTask', () => {
     }
   )
 
+  it('restores per-download speed limits from instance payload', () => {
+    const primary = makeInstance(TaskInstancePhase.HttpDownload)
+    primary.payload = { dlLimit: 1_048_576, ulLimit: 524_288 }
+    const task = taskRowToDownloadTask(makeTaskRow(), [primary])
+    expect(task.dlLimit).toBe(1_048_576)
+    expect(task.ulLimit).toBe(524_288)
+  })
+
   it('uses the canonical persisted BT type', () => {
     const task = taskRowToDownloadTask(makeTaskRow(), [
       makeInstance(TaskInstancePhase.BtDownload),
@@ -212,7 +221,7 @@ describe('persisted save directory', () => {
       makeTaskRow({ finalPath: '/Downloads/Movies/video' }),
       [makeInstance(TaskInstancePhase.BtDownload)]
     )
-    expect(task.saveDir).toBe('/Downloads')
+    expect(path.normalize(task.saveDir)).toBe(path.normalize('/Downloads'))
   })
 
   it('recovers the legacy root after a BT artifact moved into a plugin subdirectory', () => {
@@ -234,7 +243,7 @@ describe('persisted save directory', () => {
         },
       ]
     )
-    expect(task.saveDir).toBe('/Downloads')
+    expect(path.normalize(task.saveDir)).toBe(path.normalize('/Downloads'))
     expect(task.diskPath).toBe(finalPath)
   })
 
@@ -246,7 +255,7 @@ describe('persisted save directory', () => {
       }),
       [makeInstance(TaskInstancePhase.BtDownload)]
     )
-    expect(task.saveDir).toBe('/Downloads')
+    expect(path.normalize(task.saveDir)).toBe(path.normalize('/Downloads'))
   })
 
   it('keeps the directory stored in a legacy metadata-only magnet task', () => {
@@ -257,6 +266,6 @@ describe('persisted save directory', () => {
       }),
       [makeInstance(TaskInstancePhase.MagnetMetadataResolution)]
     )
-    expect(task.saveDir).toBe('/Downloads')
+    expect(path.normalize(task.saveDir)).toBe(path.normalize('/Downloads'))
   })
 })

@@ -94,8 +94,14 @@ export function taskRowToDownloadTask(
     metadataProgress: 0,
     priority: task.priority,
     category: task.category,
-    dlLimit: 0,
-    ulLimit: 0,
+    dlLimit:
+      typeof primary?.payload?.dlLimit === 'number'
+        ? primary.payload.dlLimit
+        : 0,
+    ulLimit:
+      typeof primary?.payload?.ulLimit === 'number'
+        ? primary.payload.ulLimit
+        : 0,
     filename: task.finalName || task.name,
     sizeWhenDone: task.sizeWhenDone,
     source: task.source,

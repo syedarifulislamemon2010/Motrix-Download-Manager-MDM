@@ -2,6 +2,7 @@ import type { SpeedLimitSettings } from '@shared/types/settings'
 import { describe, expect, it } from 'vitest'
 import {
   computeEffectiveLimits,
+  computeEffectiveTaskLimits,
   minCap,
   withinWindow,
 } from './effective-limits'
@@ -215,5 +216,70 @@ describe('computeEffectiveLimits', () => {
       computeEffectiveLimits(s, { ...noon, videoAppRunning: true })
     ).toEqual({ download: 512_000, upload: 10_000 })
     expect(computeEffectiveLimits(s, noon)).toEqual(s.base)
+  })
+})
+
+describe('computeEffectiveTaskLimits', () => {
+  it('combines task and global limits using minCap (min non-zero)', () => {
+    const global = { download: 1_000_000, upload: 500_000 }
+    expect(
+      computeEffectiveTaskLimits({ download: 500_000, upload: 200_000 }, global)
+    ).toEqual({
+      download: 500_000,
+      upload: 200_000,
+    })
+    expect(
+      computeEffectiveTaskLimits(
+        { download: 2_000_000, upload: 800_000 },
+        global
+      )
+    ).toEqual({
+      download: 1_000_000,
+      upload: 500_000,
+    })
+  })
+
+  it('respects 0 as unlimited on either side', () => {
+    // When global is unlimited (0), task limit applies
+    expect(
+      computeEffectiveTaskLimits(
+        { download: 300_000, upload: 100_000 },
+        { download: 0, upload: 0 }
+      )
+    ).toEqual({
+      download: 300_000,
+      upload: 100_000,
+    })
+
+    // When task is unlimited (0), global limit applies
+    expect(
+      computeEffectiveTaskLimits(
+        { download: 0, upload: 0 },
+        { download: 500_000, upload: 200_000 }
+      )
+    ).toEqual({
+      download: 500_000,
+      upload: 200_000,
+    })
+
+    // When both are 0, result is 0
+    expect(
+      computeEffectiveTaskLimits(
+        { download: 0, upload: 0 },
+        { download: 0, upload: 0 }
+      )
+    ).toEqual({
+      download: 0,
+      upload: 0,
+    })
+  })
+
+  it('handles undefined task limits by treating as unlimited (0)', () => {
+    expect(
+      computeEffectiveTaskLimits({}, { download: 400_000, upload: 100_000 })
+    ).toEqual({
+      download: 400_000,
+      upload: 100_000,
+    })
   })
 })

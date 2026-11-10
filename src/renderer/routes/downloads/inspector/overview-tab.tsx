@@ -15,8 +15,13 @@ import {
 } from '@renderer/components/ui/tooltip'
 import { useByteFormat } from '@renderer/hooks/use-byte-format'
 import type { TaskInspectorActivitySnapshotCache } from '@renderer/hooks/use-task-inspector-activity'
+import { invalidateTaskList } from '@renderer/hooks/use-task-list'
 import { resolveFailureReason } from '@renderer/lib/failure-reason'
 import { formatDurationHMS, formatProgressPercent } from '@renderer/lib/format'
+import { transport } from '@renderer/lib/transport'
+import { CompactLimitInput } from '@renderer/routes/settings/cards/compact-limit-input'
+import { Commands } from '@shared/protocol/commands'
+import type { SpeedLimitUnit } from '@shared/schemas/speed-limit-units'
 import type { DownloadTask } from '@shared/types/task'
 import { TaskStatus, TaskType } from '@shared/types/task'
 import { canOfferRetry } from '@shared/types/task-actions'
@@ -172,6 +177,8 @@ export function OverviewTab({
   const muxProgress = task.mediaProgress?.muxProgress ?? null
   const downSpeed = getTaskSpeed(task, 'downloadSpeed')
   const isBt = task.type === TaskType.Bt || task.type === TaskType.Magnet
+  const [dlMagnitude, setDlMagnitude] = useState<SpeedLimitUnit>('kilo')
+  const [ulMagnitude, setUlMagnitude] = useState<SpeedLimitUnit>('kilo')
   return (
     <div className="flex flex-col gap-3">
       {task.status === TaskStatus.Error && (
@@ -201,6 +208,52 @@ export function OverviewTab({
             label={t('panel.downloads.inspector.overview.downloaded')}
             value={formatBytes(task.downloadedBytes)}
           />
+        </Card>
+        <Card title={t('settings.downloads.speedLimit.title')}>
+          <div className="space-y-2">
+            <div className="flex items-center justify-between gap-4">
+              <span className="text-muted-foreground">
+                {t('task.add.dlLimit')}
+              </span>
+              <CompactLimitInput
+                value={task.dlLimit ?? 0}
+                onValueChange={(val) => {
+                  void transport
+                    .invoke(Commands.SetTaskSpeedLimit, {
+                      taskId: task.id,
+                      download: val,
+                    })
+                    .then(() => invalidateTaskList())
+                }}
+                magnitude={dlMagnitude}
+                onMagnitudeChange={setDlMagnitude}
+                unitLabel={t('settings.downloads.speedLimit.unit')}
+                zeroLabel={t('settings.downloads.speedLimit.unlimited')}
+                resetLabel={t('settings.downloads.speedLimit.reset')}
+              />
+            </div>
+            <div className="flex items-center justify-between gap-4">
+              <span className="text-muted-foreground">
+                {t('task.add.ulLimit')}
+              </span>
+              <CompactLimitInput
+                value={task.ulLimit ?? 0}
+                onValueChange={(val) => {
+                  void transport
+                    .invoke(Commands.SetTaskSpeedLimit, {
+                      taskId: task.id,
+                      upload: val,
+                    })
+                    .then(() => invalidateTaskList())
+                }}
+                magnitude={ulMagnitude}
+                onMagnitudeChange={setUlMagnitude}
+                unitLabel={t('settings.downloads.speedLimit.unit')}
+                zeroLabel={t('settings.downloads.speedLimit.unlimited')}
+                resetLabel={t('settings.downloads.speedLimit.reset')}
+              />
+            </div>
+          </div>
         </Card>
         <Card title={t('panel.downloads.inspector.overview.progress')}>
           {media && (

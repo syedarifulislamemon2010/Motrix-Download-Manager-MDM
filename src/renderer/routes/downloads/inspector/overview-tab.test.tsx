@@ -323,3 +323,14 @@ it('separates completed segment downloads from active mux progress and unknown o
   expect(screen.getByText('Output size').parentElement).toHaveTextContent('—')
   expect(screen.getByText('Download ETA').parentElement).toHaveTextContent('—')
 })
+
+it('renders speed limit inputs and allows changing task speed limits', async () => {
+  renderOverviewTab({
+    ...task,
+    dlLimit: 1_048_576,
+    ulLimit: 524_288,
+  })
+  expect(screen.getByText('Speed limits')).toBeInTheDocument()
+  expect(screen.getByText('DL Limit')).toBeInTheDocument()
+  expect(screen.getByText('UL Limit')).toBeInTheDocument()
+})

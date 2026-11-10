@@ -674,7 +674,22 @@ export class SessionManager {
           // gratuitous per-save now-stamp made every persisted instance
           // look changed, defeating the unchanged-row skip in
           // saveTasksBatch.
-          task.instances.map((inst) => ({ ...inst, motrixId: task.id }))
+          task.instances.map((inst, index) => ({
+            ...inst,
+            motrixId: task.id,
+            payload:
+              index === 0
+                ? {
+                    ...inst.payload,
+                    ...(task.dlLimit !== undefined
+                      ? { dlLimit: task.dlLimit }
+                      : {}),
+                    ...(task.ulLimit !== undefined
+                      ? { ulLimit: task.ulLimit }
+                      : {}),
+                  }
+                : inst.payload,
+          }))
         : [synthesizePrimaryInstance(task, now)]
 
     return { task: taskRow, instances }
@@ -2269,7 +2284,10 @@ function synthesizePrimaryInstance(
     transitionPhase: task.transitionPhase,
     uris: task.uris,
     uriHash: isHttpLike ? computeUriHash(task.uris) : null,
-    payload: {},
+    payload: {
+      ...(task.dlLimit !== undefined ? { dlLimit: task.dlLimit } : {}),
+      ...(task.ulLimit !== undefined ? { ulLimit: task.ulLimit } : {}),
+    },
     createdAt: task.createdAt,
     updatedAt: now,
   }

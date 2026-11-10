@@ -159,4 +159,27 @@ describe('SpeedLimitBadge', () => {
     ).toBeInTheDocument()
     expect(transport.invoke).not.toHaveBeenCalled()
   })
+
+  it('renders task-level speed limit when task has limits set', async () => {
+    const mockTask = {
+      id: 'task-1',
+      name: 'large-file.iso',
+      dlLimit: 1_048_576,
+      ulLimit: 524_288,
+    } as any
+
+    render(
+      <MemoryRouter>
+        <SpeedLimitBadge task={mockTask} />
+      </MemoryRouter>
+    )
+
+    const button = screen.getByRole('button', { name: /Speed mode/ })
+    await user.hover(button)
+
+    await waitFor(() => {
+      expect(screen.getByText('large-file.iso')).toBeInTheDocument()
+    })
+    expect(screen.getByText(/1 MB\/s|1 MiB\/s/)).toBeInTheDocument()
+  })
 })
