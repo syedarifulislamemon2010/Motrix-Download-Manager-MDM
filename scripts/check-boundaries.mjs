@@ -1,4 +1,5 @@
 import { spawnSync } from 'node:child_process'
+import { existsSync } from 'node:fs'
 import process from 'node:process'
 
 const rules = [
@@ -77,10 +78,16 @@ function filterOutExceptions(stdout, except = [], exceptDirectories = []) {
   return kept.length > 0 ? `${kept.join('\n')}\n` : ''
 }
 
+const grepCmd =
+  process.platform === 'win32' &&
+  existsSync('C:\\Program Files\\Git\\usr\\bin\\grep.exe')
+    ? 'C:\\Program Files\\Git\\usr\\bin\\grep.exe'
+    : 'grep'
+
 let failed = 0
 for (const rule of rules) {
   const res = spawnSync(
-    'grep',
+    grepCmd,
     ['-rnE', '--include=*.ts', '--include=*.tsx', rule.pattern, rule.dir],
     { encoding: 'utf8' }
   )
