@@ -140,6 +140,7 @@ export interface CreateDownloadParams {
   /** Requested per-server connections. Adapter maps to split +
    *  max-connection-per-server. Caller is responsible for clamping. */
   connections?: number
+  maxConnectionPerServer?: number
   proxy?: string
   /** Explicit bypass context for verified legacy HTTP restoration. */
   noProxy?: string
@@ -164,7 +165,7 @@ export interface CreateDownloadParams {
   // Explicit override
   fileAllocation?: FileAllocation
   split?: number
-  minSplitSize?: number
+  minSplitSize?: number | string
 }
 
 /** Host-owned policy, invoked after a durable GID owner exists and before dispatch. */

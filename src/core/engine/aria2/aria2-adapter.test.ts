@@ -1040,6 +1040,29 @@ describe('Aria2Adapter', () => {
       )
     })
 
+    it('createDownload honors explicit split, maxConnectionPerServer, and minSplitSize with multiple mirror uris', async () => {
+      const rpc = createMockRpc()
+      vi.mocked(rpc.addUri).mockResolvedValue('gidXYZ')
+      const adapter = new Aria2Adapter(rpc)
+
+      await adapter.createDownload({
+        uris: ['https://srv1.com/file.iso', 'https://srv2.org/file.iso'],
+        saveDir: '/d',
+        split: 16,
+        maxConnectionPerServer: 4,
+        minSplitSize: '10M',
+      })
+
+      expect(rpc.addUri).toHaveBeenCalledWith(
+        ['https://srv1.com/file.iso', 'https://srv2.org/file.iso'],
+        expect.objectContaining({
+          split: '16',
+          'max-connection-per-server': '4',
+          'min-split-size': '10M',
+        })
+      )
+    })
+
     it('pre-caps connection options after the shell detects official aria2', async () => {
       const rpc = createMockRpc()
       vi.mocked(rpc.addUri).mockResolvedValue('gidXYZ')

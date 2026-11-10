@@ -101,6 +101,21 @@ function LinksAdvancedFields() {
       />
       <DenseField
         control={control}
+        name="maxConnectionPerServer"
+        label={t('settings.downloads.performance.maxConnectionPerServer')}
+        type="number"
+        min={1}
+        max={64}
+        placeholder={t('settings.downloads.performance.profiles.auto.label')}
+      />
+      <DenseField
+        control={control}
+        name="minSplitSize"
+        label={t('settings.downloads.performance.minSplitSize', { unit: 'MB' })}
+        placeholder="20M"
+      />
+      <DenseField
+        control={control}
         name="userAgent"
         label={t('task.add.userAgent')}
         multiline

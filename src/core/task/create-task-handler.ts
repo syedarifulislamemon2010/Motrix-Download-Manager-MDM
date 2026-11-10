@@ -707,6 +707,9 @@ async function handleCreateTaskUnderAdmission(
           saveDir: params.saveDir,
           filename: params.filename,
           connections: params.connections,
+          split: params.split,
+          maxConnectionPerServer: params.maxConnectionPerServer,
+          minSplitSize: params.minSplitSize,
         },
         'dispatching to engine'
       )
@@ -728,6 +731,9 @@ async function handleCreateTaskUnderAdmission(
       filename: `${finalName}${INCOMPLETE_SUFFIX}`,
       performanceProfile: engineSettings.performanceProfile,
       connections: req.connections,
+      split: req.split,
+      maxConnectionPerServer: req.maxConnectionPerServer,
+      minSplitSize: req.minSplitSize,
       proxy: req.proxy,
     })
   } else if (req.type === 'http') {
@@ -735,6 +741,12 @@ async function handleCreateTaskUnderAdmission(
       req.connections !== undefined
         ? Math.min(req.connections, engineSettings.maxConnectionPerServer)
         : undefined
+    const effectiveMaxConnectionPerServer =
+      req.maxConnectionPerServer !== undefined
+        ? req.maxConnectionPerServer
+        : clampedConnections
+    const effectiveSplit =
+      req.split !== undefined ? req.split : clampedConnections
     const headersRecord =
       req.headers.length > 0
         ? Object.fromEntries(req.headers.map((h) => [h.name, h.value]))
@@ -748,6 +760,9 @@ async function handleCreateTaskUnderAdmission(
       performanceProfile: engineSettings.performanceProfile,
       userAgent: engineSettings.userAgent,
       connections: clampedConnections,
+      split: effectiveSplit,
+      maxConnectionPerServer: effectiveMaxConnectionPerServer,
+      minSplitSize: req.minSplitSize,
       headers: headersRecord,
       cookies: opts.cookies,
       proxy: req.proxy,

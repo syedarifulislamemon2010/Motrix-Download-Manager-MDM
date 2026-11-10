@@ -607,10 +607,15 @@ export class Aria2Adapter implements EngineAdapter {
       // downloads. EngineSupervisor applies the automatic recommendation
       // before process launch; it is intentionally not sent to addUri here.
     }
-    if (params.split != null && !options.split) {
+    if (params.split != null) {
       options.split = String(params.split)
     }
-    if (params.minSplitSize != null && !options['min-split-size']) {
+    if (params.maxConnectionPerServer != null) {
+      options['max-connection-per-server'] = String(
+        params.maxConnectionPerServer
+      )
+    }
+    if (params.minSplitSize != null) {
       options['min-split-size'] = String(params.minSplitSize)
     }
     if (requestedGid !== undefined) {

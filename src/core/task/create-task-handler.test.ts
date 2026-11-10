@@ -975,6 +975,36 @@ describe('handleCreateTask', () => {
     })
   })
 
+  it('dispatches http request with mirrors, split, maxConnectionPerServer and minSplitSize', async () => {
+    const deps = makeDeps({ addUriGid: 'gid-x' })
+    const result = await handleCreateTask(
+      {
+        type: 'http',
+        uris: ['https://srv1.com/file.iso', 'https://srv2.org/file.iso'],
+        saveDir: '/d',
+        headers: [],
+        split: 12,
+        maxConnectionPerServer: 4,
+        minSplitSize: '5M',
+      },
+      deps
+    )
+    expect(result.gid).toMatch(/^[0-9a-f]{16}$/)
+    expect(deps.addUri).toHaveBeenCalledWith(
+      ['https://srv1.com/file.iso', 'https://srv2.org/file.iso'],
+      expect.objectContaining({
+        dir: '/d',
+        split: '12',
+        'max-connection-per-server': '4',
+        'min-split-size': '5M',
+      })
+    )
+    expect(lastAddedTask(deps).uris).toEqual([
+      'https://srv1.com/file.iso',
+      'https://srv2.org/file.iso',
+    ])
+  })
+
   it('persists a captured validator for a public direct download', async () => {
     const deps = makeDeps()
     const resourceValidator = {

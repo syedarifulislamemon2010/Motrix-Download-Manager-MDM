@@ -235,6 +235,32 @@ describe('formValuesToTaskCreateRequests', () => {
     expect(reqs[1]).toMatchObject({ type: 'http', uris: ['https://c/d'] })
   })
 
+  it('groups pipe-separated mirrors on a single line into one task request', () => {
+    const reqs = formValuesToTaskCreateRequests({
+      tab: 'links',
+      urls: 'https://srv1.com/file.iso | https://srv2.org/file.iso | https://srv1.com/file.iso\nhttps://other.com/item.zip',
+      saveDir: '/downloads',
+      split: 8,
+      maxConnectionPerServer: 4,
+      minSplitSize: '10M',
+    })
+    expect(reqs).toHaveLength(2)
+    expect(reqs[0]).toMatchObject({
+      type: 'http',
+      uris: ['https://srv1.com/file.iso', 'https://srv2.org/file.iso'],
+      split: 8,
+      maxConnectionPerServer: 4,
+      minSplitSize: '10M',
+    })
+    expect(reqs[1]).toMatchObject({
+      type: 'http',
+      uris: ['https://other.com/item.zip'],
+      split: 8,
+      maxConnectionPerServer: 4,
+      minSplitSize: '10M',
+    })
+  })
+
   it('converts a magnet line into its own bt request', () => {
     const magnet = `magnet:?xt=urn:btih:${'a'.repeat(40)}`
     const reqs = formValuesToTaskCreateRequests({

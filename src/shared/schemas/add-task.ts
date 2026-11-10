@@ -1,4 +1,5 @@
 import { analyzeDownloadInput } from '@shared/lib/download-source-input'
+import { parseMirrorUrls } from '@shared/lib/mirror-parser'
 import { MAX_TORRENT_BASE64_SIZE } from '@shared/lib/torrent-meta'
 import { z } from 'zod'
 import { MAX_MIRROR_URIS, type SourceFailure } from './download-source'
@@ -41,6 +42,8 @@ const linksTabSchema = z.object({
   filename: z.string().optional(),
   extraHeaders: z.array(extraHeaderDraftSchema).optional(),
   split: z.number().int().min(1).max(128).optional(),
+  maxConnectionPerServer: z.number().int().min(1).max(64).optional(),
+  minSplitSize: z.string().optional(),
   userAgent: z.string().optional(),
   referer: z.string().optional(),
   cookie: z.string().optional(),
@@ -94,6 +97,9 @@ const httpTaskRequestSchema = z.object({
   saveDir: z.string().min(1),
   filename: z.string().optional(),
   connections: z.number().int().min(1).max(128).optional(),
+  split: z.number().int().min(1).max(128).optional(),
+  maxConnectionPerServer: z.number().int().min(1).max(64).optional(),
+  minSplitSize: z.string().optional(),
   headers: z.array(httpHeaderSchema).default([]),
   proxy: z.string().optional(),
 })
@@ -309,7 +315,15 @@ function compactHeader(name: string, value?: string) {
 function splitUrlLines(raw: string): string[] {
   return raw
     .split('\n')
-    .map((l) => infoHashToMagnetUri(l) ?? l.trim())
+    .flatMap((l) => {
+      const trimmed = l.trim()
+      if (!trimmed) return []
+      if (trimmed.includes('|')) {
+        const mirrors = parseMirrorUrls(trimmed)
+        if (mirrors.length > 0) return mirrors
+      }
+      return [infoHashToMagnetUri(trimmed) ?? trimmed]
+    })
     .filter((l) => l.length > 0)
 }
 
@@ -365,7 +379,15 @@ export function formValuesToTaskCreateRequest(
       uris,
       saveDir: v.saveDir,
       filename: trimmed(v.filename),
-      ...(v.split === undefined ? {} : { connections: v.split }),
+      ...(v.split === undefined
+        ? {}
+        : { connections: v.split, split: v.split }),
+      ...(v.maxConnectionPerServer === undefined
+        ? {}
+        : { maxConnectionPerServer: v.maxConnectionPerServer }),
+      ...(trimmed(v.minSplitSize)
+        ? { minSplitSize: trimmed(v.minSplitSize) }
+        : {}),
       headers,
       proxy: trimmed(v.allProxy),
     }

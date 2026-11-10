@@ -81,7 +81,11 @@ describe('AdvancedPanel', () => {
     await user.click(screen.getByRole('button', { name: /advanced/i }))
     expect(screen.getByLabelText(/filename/i)).toBeInTheDocument()
     expect(screen.getByLabelText(/user-agent/i)).toBeInTheDocument()
-    expect(screen.getByLabelText(/connections/i)).toHaveValue(null)
+    expect(screen.getByLabelText(/^connections$/i)).toHaveValue(null)
+    expect(
+      screen.getByLabelText(/max connections per server/i)
+    ).toBeInTheDocument()
+    expect(screen.getByLabelText(/min segment|min split/i)).toBeInTheDocument()
   })
 
   it('renders Torrent-flavored fields when tab=torrent', async () => {

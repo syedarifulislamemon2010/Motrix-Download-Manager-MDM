@@ -1,4 +1,5 @@
 import { analyzeDownloadSource } from '@shared/lib/download-source'
+import { parseMirrorLine } from '@shared/lib/mirror-parser'
 import {
   type DownloadSourceAnalysis,
   MAX_DOWNLOAD_INPUT_BYTES,
@@ -50,6 +51,49 @@ export function analyzeDownloadInput(text: string): DownloadInputLine[] {
     offset += raw.length + 1
     const input = raw.replace(/\r$/, '').replace(/^ +| +$/g, '')
     if (input === '') return []
+    if (!unsupportedContainer && input.includes('|')) {
+      const mirror = parseMirrorLine(input)
+      if (mirror) {
+        let host = ''
+        try {
+          host = new URL(mirror.primaryUrl).host
+        } catch {
+          host = ''
+        }
+        const protocol = mirror.primaryUrl.startsWith('ftp:')
+          ? ('ftp' as const)
+          : mirror.primaryUrl.startsWith('http:')
+            ? ('http' as const)
+            : ('https' as const)
+        const mirrorAnalysis: DownloadSourceAnalysis = mirror.valid
+          ? {
+              status: 'accepted',
+              protocol,
+              sourceUrl: mirror.uris.join(' | '),
+              requestUrl: mirror.primaryUrl,
+              host,
+            }
+          : {
+              status: 'rejected',
+              diagnostic: {
+                reason: mirror.errorReason ?? 'ambiguousStructure',
+                start: mirror.errorOffset?.start ?? 0,
+                end: mirror.errorOffset?.end ?? raw.length,
+              },
+            }
+        return [
+          {
+            line,
+            start,
+            end: start + raw.length,
+            raw,
+            url: mirror.valid ? mirror.uris.join(' | ') : input,
+            valid: mirror.valid,
+            analysis: mirrorAnalysis,
+          },
+        ]
+      }
+    }
     const url = input.includes('\t')
       ? input
       : (infoHashToMagnetUri(input) ?? input)
