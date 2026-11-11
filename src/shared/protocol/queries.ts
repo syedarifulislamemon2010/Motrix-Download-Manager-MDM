@@ -62,6 +62,7 @@ export const Queries = {
   GetTaskFiles: 'query:getTaskFiles',
   GetTaskPieces: 'query:getTaskPieces',
   GetTaskPeers: 'query:getTaskPeers',
+  GetTaskServers: 'query:getTaskServers',
   GetEngineTaskOptions: 'query:getEngineTaskOptions',
   GetEngineStatus: 'query:getEngineStatus',
   GetEngineDiagnostics: 'query:getEngineDiagnostics',

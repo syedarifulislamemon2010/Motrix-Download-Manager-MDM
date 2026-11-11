@@ -1125,7 +1125,8 @@
           "overview": "Oversikt",
           "peers": "Noder",
           "pieces": "Deler",
-          "trackers": "Trackere"
+          "trackers": "Trackere",
+          "servers": "Servers"
         },
         "trackers": {
           "action": {
@@ -1160,6 +1161,17 @@
             "excluded": "De {{count}} trackerne du fjernet, legges ikke til igjen ved automatiske oppdateringer.",
             "apply": "Bruk oppdatering",
             "changesPending": "Ventende endringer: {{count}}"
+          }
+        },
+        "servers": {
+          "summary": "{{count}} server(s)",
+          "empty": "No download servers connected",
+          "col": {
+            "country": "Geo",
+            "endpoint": "IP : Port",
+            "uri": "URI",
+            "down": "↓",
+            "latency": "Latency"
           }
         }
       },

@@ -887,12 +887,24 @@
           "pieces": "Partes",
           "peers": "Pares",
           "trackers": "Rastreadores",
-          "activity": "Atividade"
+          "activity": "Atividade",
+          "servers": "Servers"
         },
         "placeholder": {
           "files": "Lista de arquivos.",
           "peers": "Lista de pares.",
           "trackers": "Lista de rastreadores."
+        },
+        "servers": {
+          "summary": "{{count}} server(s)",
+          "empty": "No download servers connected",
+          "col": {
+            "country": "Geo",
+            "endpoint": "IP : Port",
+            "uri": "URI",
+            "down": "↓",
+            "latency": "Latency"
+          }
         }
       },
       "action": {

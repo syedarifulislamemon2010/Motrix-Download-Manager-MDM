@@ -1125,7 +1125,8 @@
           "overview": "Επισκόπηση",
           "peers": "Ομότιμοι",
           "pieces": "Τμήματα",
-          "trackers": "Trackers"
+          "trackers": "Trackers",
+          "servers": "Servers"
         },
         "trackers": {
           "action": {
@@ -1160,6 +1161,17 @@
             "excluded": "Οι {{count}} trackers που αφαιρέσατε δεν θα προστεθούν ξανά στις αυτόματες ενημερώσεις.",
             "apply": "Εφαρμογή ενημέρωσης",
             "changesPending": "Εκκρεμείς αλλαγές: {{count}}"
+          }
+        },
+        "servers": {
+          "summary": "{{count}} server(s)",
+          "empty": "No download servers connected",
+          "col": {
+            "country": "Geo",
+            "endpoint": "IP : Port",
+            "uri": "URI",
+            "down": "↓",
+            "latency": "Latency"
           }
         }
       },

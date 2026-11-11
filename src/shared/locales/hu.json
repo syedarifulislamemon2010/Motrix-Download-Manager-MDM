@@ -875,12 +875,24 @@
           "pieces": "Darabok",
           "peers": "Partnerek",
           "trackers": "Trackerek",
-          "activity": "Aktivitás"
+          "activity": "Aktivitás",
+          "servers": "Servers"
         },
         "placeholder": {
           "files": "Fájllista.",
           "peers": "Partnerlista.",
           "trackers": "Trackerlista."
+        },
+        "servers": {
+          "summary": "{{count}} server(s)",
+          "empty": "No download servers connected",
+          "col": {
+            "country": "Geo",
+            "endpoint": "IP : Port",
+            "uri": "URI",
+            "down": "↓",
+            "latency": "Latency"
+          }
         }
       },
       "action": {

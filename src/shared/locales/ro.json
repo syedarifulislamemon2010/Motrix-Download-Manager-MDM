@@ -1134,7 +1134,8 @@
           "overview": "Prezentare generală",
           "peers": "Parteneri",
           "pieces": "Fragmente",
-          "trackers": "Trackere"
+          "trackers": "Trackere",
+          "servers": "Servers"
         },
         "trackers": {
           "action": {
@@ -1172,6 +1173,17 @@
             "excluded": "Cele {{count}} trackere eliminate nu vor fi adăugate din nou prin actualizări automate.",
             "apply": "Aplică actualizarea",
             "changesPending": "Modificări în așteptare: {{count}}"
+          }
+        },
+        "servers": {
+          "summary": "{{count}} server(s)",
+          "empty": "No download servers connected",
+          "col": {
+            "country": "Geo",
+            "endpoint": "IP : Port",
+            "uri": "URI",
+            "down": "↓",
+            "latency": "Latency"
           }
         }
       },

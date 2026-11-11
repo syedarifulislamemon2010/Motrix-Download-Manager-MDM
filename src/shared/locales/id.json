@@ -863,12 +863,24 @@
           "pieces": "Potongan",
           "peers": "Peer",
           "trackers": "Pelacak",
-          "activity": "Aktivitas"
+          "activity": "Aktivitas",
+          "servers": "Servers"
         },
         "placeholder": {
           "files": "Daftar berkas.",
           "peers": "Daftar peer.",
           "trackers": "Daftar pelacak."
+        },
+        "servers": {
+          "summary": "{{count}} server(s)",
+          "empty": "No download servers connected",
+          "col": {
+            "country": "Geo",
+            "endpoint": "IP : Port",
+            "uri": "URI",
+            "down": "↓",
+            "latency": "Latency"
+          }
         }
       },
       "action": {

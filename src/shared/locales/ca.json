@@ -1134,7 +1134,8 @@
           "overview": "Resum",
           "peers": "Parells",
           "pieces": "Peces",
-          "trackers": "Rastrejadors"
+          "trackers": "Rastrejadors",
+          "servers": "Servers"
         },
         "trackers": {
           "action": {
@@ -1172,6 +1173,17 @@
             "excluded": "Els {{count}} trackers que has eliminat no es tornaran a afegir en les actualitzacions automàtiques.",
             "apply": "Aplica l’actualització",
             "changesPending": "Canvis pendents: {{count}}"
+          }
+        },
+        "servers": {
+          "summary": "{{count}} server(s)",
+          "empty": "No download servers connected",
+          "col": {
+            "country": "Geo",
+            "endpoint": "IP : Port",
+            "uri": "URI",
+            "down": "↓",
+            "latency": "Latency"
           }
         }
       },

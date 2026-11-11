@@ -875,12 +875,24 @@
           "pieces": "Parçalar",
           "peers": "Eşler",
           "trackers": "İzleyiciler",
-          "activity": "Etkinlik"
+          "activity": "Etkinlik",
+          "servers": "Servers"
         },
         "placeholder": {
           "files": "Dosya listesi.",
           "peers": "Eş listesi.",
           "trackers": "İzleyici listesi."
+        },
+        "servers": {
+          "summary": "{{count}} server(s)",
+          "empty": "No download servers connected",
+          "col": {
+            "country": "Geo",
+            "endpoint": "IP : Port",
+            "uri": "URI",
+            "down": "↓",
+            "latency": "Latency"
+          }
         }
       },
       "action": {

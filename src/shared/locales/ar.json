@@ -1161,7 +1161,8 @@
           "overview": "نظرة عامة",
           "peers": "الأقران",
           "pieces": "الأجزاء",
-          "trackers": "المتعقّبات"
+          "trackers": "المتعقّبات",
+          "servers": "Servers"
         },
         "trackers": {
           "action": {
@@ -1208,6 +1209,17 @@
             "excluded": "لن تُضاف المتتبعات التي أزلتها ({{count}}) مجددًا أثناء التحديثات التلقائية.",
             "apply": "تطبيق التحديث",
             "changesPending": "تغييرات معلقة: {{count}}"
+          }
+        },
+        "servers": {
+          "summary": "{{count}} server(s)",
+          "empty": "No download servers connected",
+          "col": {
+            "country": "Geo",
+            "endpoint": "IP : Port",
+            "uri": "URI",
+            "down": "↓",
+            "latency": "Latency"
           }
         }
       },

@@ -504,6 +504,30 @@ describe('buildServerQueryHandlers — GetTaskPieces parity', () => {
     })
     expect(getTaskPieces).toHaveBeenCalledWith('gid-http')
   })
+
+  it('delegates GetTaskServers to getTaskServers', async () => {
+    const task = makeDownloadTask({
+      id: 'task-http-server',
+      engineTaskId: 'gid-server',
+    })
+    const getTaskServers = vi.fn().mockResolvedValue([])
+    const handlers = buildServerQueryHandlers(
+      makeCtx({
+        taskManager: {
+          getAll: vi.fn(() => [task]),
+          getById: vi.fn(() => task),
+        },
+        engineAdapter: {
+          getTaskServers,
+        },
+      }) as unknown as ServerQueryContext
+    )
+
+    await expect(
+      handlers[Queries.GetTaskServers]?.({ taskId: 'task-http-server' })
+    ).resolves.toEqual([])
+    expect(getTaskServers).toHaveBeenCalledWith('gid-server')
+  })
 })
 
 describe('buildServerQueryHandlers — GeoIP parity', () => {

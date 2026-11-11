@@ -1143,7 +1143,8 @@
           "overview": "Огляд",
           "peers": "Піри",
           "pieces": "Частини",
-          "trackers": "Трекери"
+          "trackers": "Трекери",
+          "servers": "Servers"
         },
         "trackers": {
           "action": {
@@ -1184,6 +1185,17 @@
             "excluded": "Видалені вами трекери ({{count}}) не додаватимуться під час автоматичного оновлення.",
             "apply": "Застосувати оновлення",
             "changesPending": "Очікувані зміни: {{count}}"
+          }
+        },
+        "servers": {
+          "summary": "{{count}} server(s)",
+          "empty": "No download servers connected",
+          "col": {
+            "country": "Geo",
+            "endpoint": "IP : Port",
+            "uri": "URI",
+            "down": "↓",
+            "latency": "Latency"
           }
         }
       },

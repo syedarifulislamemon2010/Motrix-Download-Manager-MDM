@@ -863,12 +863,24 @@
           "pieces": "ピース",
           "peers": "ピア",
           "trackers": "トラッカー",
-          "activity": "アクティビティ"
+          "activity": "アクティビティ",
+          "servers": "Servers"
         },
         "placeholder": {
           "files": "ファイル一覧。",
           "peers": "ピア一覧。",
           "trackers": "トラッカー一覧。"
+        },
+        "servers": {
+          "summary": "{{count}} server(s)",
+          "empty": "No download servers connected",
+          "col": {
+            "country": "Geo",
+            "endpoint": "IP : Port",
+            "uri": "URI",
+            "down": "↓",
+            "latency": "Latency"
+          }
         }
       },
       "action": {

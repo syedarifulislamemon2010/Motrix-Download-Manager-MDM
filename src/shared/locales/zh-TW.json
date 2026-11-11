@@ -863,12 +863,24 @@
           "pieces": "區塊",
           "peers": "對等節點",
           "trackers": "Tracker",
-          "activity": "活動"
+          "activity": "活動",
+          "servers": "Servers"
         },
         "placeholder": {
           "files": "檔案清單。",
           "peers": "對等節點清單。",
           "trackers": "Tracker 清單。"
+        },
+        "servers": {
+          "summary": "{{count}} server(s)",
+          "empty": "No download servers connected",
+          "col": {
+            "country": "Geo",
+            "endpoint": "IP : Port",
+            "uri": "URI",
+            "down": "↓",
+            "latency": "Latency"
+          }
         }
       },
       "action": {

@@ -899,12 +899,24 @@
           "pieces": "Части",
           "peers": "Пиры",
           "trackers": "Трекеры",
-          "activity": "Активность"
+          "activity": "Активность",
+          "servers": "Servers"
         },
         "placeholder": {
           "files": "Список файлов.",
           "peers": "Список пиров.",
           "trackers": "Список трекеров."
+        },
+        "servers": {
+          "summary": "{{count}} server(s)",
+          "empty": "No download servers connected",
+          "col": {
+            "country": "Geo",
+            "endpoint": "IP : Port",
+            "uri": "URI",
+            "down": "↓",
+            "latency": "Latency"
+          }
         }
       },
       "action": {

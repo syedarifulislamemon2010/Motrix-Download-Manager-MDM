@@ -863,12 +863,24 @@
           "pieces": "조각",
           "peers": "피어",
           "trackers": "트래커",
-          "activity": "활동"
+          "activity": "활동",
+          "servers": "Servers"
         },
         "placeholder": {
           "files": "파일 목록.",
           "peers": "피어 목록.",
           "trackers": "트래커 목록."
+        },
+        "servers": {
+          "summary": "{{count}} server(s)",
+          "empty": "No download servers connected",
+          "col": {
+            "country": "Geo",
+            "endpoint": "IP : Port",
+            "uri": "URI",
+            "down": "↓",
+            "latency": "Latency"
+          }
         }
       },
       "action": {

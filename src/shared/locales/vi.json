@@ -863,12 +863,24 @@
           "pieces": "Mảnh",
           "peers": "Máy ngang hàng",
           "trackers": "Máy chủ theo dõi",
-          "activity": "Hoạt động"
+          "activity": "Hoạt động",
+          "servers": "Servers"
         },
         "placeholder": {
           "files": "Danh sách tệp.",
           "peers": "Danh sách máy ngang hàng.",
           "trackers": "Danh sách máy chủ theo dõi."
+        },
+        "servers": {
+          "summary": "{{count}} server(s)",
+          "empty": "No download servers connected",
+          "col": {
+            "country": "Geo",
+            "endpoint": "IP : Port",
+            "uri": "URI",
+            "down": "↓",
+            "latency": "Latency"
+          }
         }
       },
       "action": {

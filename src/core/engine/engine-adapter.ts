@@ -18,6 +18,7 @@ import type {
 } from '@shared/types/history'
 import type { TaskPeer } from '@shared/types/peer'
 import type { TaskPiecesResult } from '@shared/types/pieces'
+import type { TaskServer } from '@shared/types/server'
 import type { GlobalStats } from '@shared/types/stats'
 import type { DownloadTask, TaskFile } from '@shared/types/task'
 import type { FileAllocation } from '@shared/types/tuning'
@@ -314,6 +315,11 @@ export interface EngineAdapter {
    *   the renderer is expected to virtualize.
    */
   getTaskPeers(engineTaskId: string): Promise<TaskPeer[]>
+
+  /**
+   * Fetch connected HTTP/FTP download servers and mirrors for this task.
+   */
+  getTaskServers(engineTaskId: string): Promise<TaskServer[]>
 
   getGlobalStats(): Promise<GlobalStats>
 

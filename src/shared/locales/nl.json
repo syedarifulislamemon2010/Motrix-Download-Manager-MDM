@@ -1125,7 +1125,8 @@
           "overview": "Overzicht",
           "peers": "Peers",
           "pieces": "Stukken",
-          "trackers": "Trackers"
+          "trackers": "Trackers",
+          "servers": "Servers"
         },
         "trackers": {
           "action": {
@@ -1160,6 +1161,17 @@
             "excluded": "De {{count}} door jou verwijderde trackers worden bij automatische updates niet opnieuw toegevoegd.",
             "apply": "Update toepassen",
             "changesPending": "Openstaande wijzigingen: {{count}}"
+          }
+        },
+        "servers": {
+          "summary": "{{count}} server(s)",
+          "empty": "No download servers connected",
+          "col": {
+            "country": "Geo",
+            "endpoint": "IP : Port",
+            "uri": "URI",
+            "down": "↓",
+            "latency": "Latency"
           }
         }
       },

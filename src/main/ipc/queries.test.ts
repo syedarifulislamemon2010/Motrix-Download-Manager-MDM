@@ -780,6 +780,27 @@ describe('GetTaskBtTracker handler', () => {
   })
 })
 
+describe('GetTaskServers handler', () => {
+  it('delegates to getTaskServers core helper', async () => {
+    const taskManager = {
+      getById: vi.fn().mockReturnValue({ id: 'task-1', engineTaskId: 'gid-1' }),
+    }
+    const engineAdapter = {
+      getTaskServers: vi.fn().mockResolvedValue([]),
+    }
+    const handlers = buildQueryHandlers({
+      taskManager,
+      engineAdapter,
+    } as unknown as QueryContext)
+    const result = await handlers[Queries.GetTaskServers]?.({
+      taskId: 'task-1',
+    })
+    expect(taskManager.getById).toHaveBeenCalledWith('task-1')
+    expect(engineAdapter.getTaskServers).toHaveBeenCalledWith('gid-1')
+    expect(result).toEqual([])
+  })
+})
+
 describe('GetFfmpegDetection handler', () => {
   beforeEach(() => {
     mockedFfmpegFactory.mockClear()

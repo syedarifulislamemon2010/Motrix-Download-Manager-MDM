@@ -81,6 +81,7 @@ export type InspectorTab =
   | 'files'
   | 'pieces'
   | 'peers'
+  | 'servers'
   | 'trackers'
   | 'activity'
 

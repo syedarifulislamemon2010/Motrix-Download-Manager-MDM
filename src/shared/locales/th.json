@@ -1116,7 +1116,8 @@
           "overview": "ภาพรวม",
           "peers": "เพียร์",
           "pieces": "ชิ้นส่วน",
-          "trackers": "แทร็กเกอร์"
+          "trackers": "แทร็กเกอร์",
+          "servers": "Servers"
         },
         "trackers": {
           "action": {
@@ -1148,6 +1149,17 @@
             "excluded": "แทร็กเกอร์ {{count}} รายการที่คุณลบจะไม่ถูกเพิ่มกลับในการอัปเดตอัตโนมัติ",
             "apply": "ใช้อัปเดต",
             "changesPending": "การเปลี่ยนแปลงที่รออยู่: {{count}}"
+          }
+        },
+        "servers": {
+          "summary": "{{count}} server(s)",
+          "empty": "No download servers connected",
+          "col": {
+            "country": "Geo",
+            "endpoint": "IP : Port",
+            "uri": "URI",
+            "down": "↓",
+            "latency": "Latency"
           }
         }
       },

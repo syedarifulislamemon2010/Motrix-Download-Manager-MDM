@@ -875,12 +875,24 @@
           "pieces": "Blöcke",
           "peers": "Peers",
           "trackers": "Tracker",
-          "activity": "Aktivität"
+          "activity": "Aktivität",
+          "servers": "Servers"
         },
         "placeholder": {
           "files": "Dateiliste.",
           "peers": "Peer-Liste.",
           "trackers": "Tracker-Liste."
+        },
+        "servers": {
+          "summary": "{{count}} server(s)",
+          "empty": "No download servers connected",
+          "col": {
+            "country": "Geo",
+            "endpoint": "IP : Port",
+            "uri": "URI",
+            "down": "↓",
+            "latency": "Latency"
+          }
         }
       },
       "action": {

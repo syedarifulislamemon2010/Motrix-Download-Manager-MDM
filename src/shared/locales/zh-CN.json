@@ -831,7 +831,8 @@
           "pieces": "分片",
           "peers": "节点",
           "trackers": "Trackers",
-          "activity": "活动"
+          "activity": "活动",
+          "servers": "服务器"
         },
         "placeholder": {
           "files": "文件列表",
@@ -868,6 +869,17 @@
             "excluded": "你已移除的 {{count}} 个 Tracker 不会被自动重新加入。",
             "apply": "应用更新",
             "changesPending": "待更新 {{count}} 项"
+          }
+        },
+        "servers": {
+          "summary": "{{count}} 个下载服务器",
+          "empty": "未连接下载服务器",
+          "col": {
+            "country": "地区",
+            "endpoint": "IP : 端口",
+            "uri": "链接",
+            "down": "↓",
+            "latency": "延迟"
           }
         }
       },

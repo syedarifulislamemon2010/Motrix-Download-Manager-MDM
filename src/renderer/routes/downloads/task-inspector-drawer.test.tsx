@@ -459,6 +459,37 @@ describe('TaskInspectorDrawer', () => {
     ).not.toBeInTheDocument()
   })
 
+  it('shows Servers tab for HTTP tasks and Peers/Trackers for BT tasks', () => {
+    const selection = createSelectionStore<DownloadTask>((t) => t.id)
+    const httpTask = fake({
+      id: 'http-1',
+      type: TaskType.Http,
+      kind: TaskKind.Direct,
+    })
+    selection.getState().setItems([httpTask])
+    selection.getState().select('http-1')
+
+    const { rerender } = render(
+      <TestHarness selection={selection} tasks={[httpTask]} />
+    )
+    expect(screen.getByRole('tab', { name: 'Servers' })).toBeInTheDocument()
+    expect(screen.queryByRole('tab', { name: 'Peers' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('tab', { name: 'Trackers' })).not.toBeInTheDocument()
+
+    const btTask = fake({
+      id: 'bt-1',
+      type: TaskType.Bt,
+      kind: TaskKind.Bt,
+    })
+    selection.getState().setItems([btTask])
+    selection.getState().select('bt-1')
+    rerender(<TestHarness selection={selection} tasks={[btTask]} />)
+
+    expect(screen.queryByRole('tab', { name: 'Servers' })).not.toBeInTheDocument()
+    expect(screen.getByRole('tab', { name: 'Peers' })).toBeInTheDocument()
+    expect(screen.getByRole('tab', { name: 'Trackers' })).toBeInTheDocument()
+  })
+
   it('displays and copies a native Windows UNC path without changing the task', async () => {
     const platform = vi
       .spyOn(transport, 'platform', 'get')

@@ -1125,7 +1125,8 @@
           "overview": "Общ преглед",
           "peers": "Участници",
           "pieces": "Части",
-          "trackers": "Тракери"
+          "trackers": "Тракери",
+          "servers": "Servers"
         },
         "trackers": {
           "action": {
@@ -1160,6 +1161,17 @@
             "excluded": "Премахнатите от вас тракери ({{count}}) няма да се добавят отново при автоматично обновяване.",
             "apply": "Прилагане на обновяването",
             "changesPending": "Чакащи промени: {{count}}"
+          }
+        },
+        "servers": {
+          "summary": "{{count}} server(s)",
+          "empty": "No download servers connected",
+          "col": {
+            "country": "Geo",
+            "endpoint": "IP : Port",
+            "uri": "URI",
+            "down": "↓",
+            "latency": "Latency"
           }
         }
       },

@@ -26,6 +26,7 @@ import type {
   RequeueResult,
 } from '@shared/types/history'
 import type { TaskPeer } from '@shared/types/peer'
+import type { TaskServer } from '@shared/types/server'
 import type { TaskPiecesResult } from '@shared/types/pieces'
 import type { EngineSettings } from '@shared/types/settings'
 import type { GlobalStats } from '@shared/types/stats'
@@ -758,6 +759,30 @@ export class Aria2Adapter implements EngineAdapter {
       // Non-BT tasks and unknown gids both raise on the aria2 side;
       // surface as an empty list so the renderer can render its
       // "no peers" placeholder without branching on adapter errors.
+      return []
+    }
+  }
+
+  async getTaskServers(engineTaskId: string): Promise<TaskServer[]> {
+    try {
+      const groups = await this.rpc.getServers(engineTaskId)
+      const servers: TaskServer[] = []
+      for (const group of groups) {
+        for (const s of group.servers) {
+          const downloadSpeed = Number.parseInt(s.downloadSpeed, 10) || 0
+          const port = Number.parseInt(s.port, 10) || 80
+          servers.push({
+            id: `${s.ip}:${port}:${s.currentUri}`,
+            uri: s.uri,
+            currentUri: s.currentUri,
+            downloadSpeed,
+            ip: s.ip,
+            port,
+          })
+        }
+      }
+      return servers
+    } catch {
       return []
     }
   }

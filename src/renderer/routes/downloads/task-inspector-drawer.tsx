@@ -9,6 +9,7 @@ import {
   InfoIcon,
   PeersIcon,
   PiecesIcon,
+  ServerIcon,
   TrackerIcon,
 } from '@renderer/components/icons'
 import { Badge } from '@renderer/components/ui/badge'
@@ -46,6 +47,7 @@ import { MultiSelectionSummary } from './inspector/multi-selection-summary'
 import { OverviewTab } from './inspector/overview-tab'
 import { PeersTab } from './inspector/peers-tab'
 import { PiecesTab } from './inspector/pieces-tab'
+import { ServersTab } from './inspector/servers-tab'
 import { TaskInspectorActionBar } from './inspector/task-inspector-action-bar'
 import { TrackersTab } from './inspector/trackers-tab'
 import { StatusPill } from './status-pill'
@@ -99,7 +101,8 @@ export function TaskInspectorDrawer({
   }, [onDismiss])
   const activeSubtab =
     (subtab === 'pieces' && !showPieces) ||
-    ((subtab === 'peers' || subtab === 'trackers') && !isBt)
+    ((subtab === 'peers' || subtab === 'trackers') && !isBt) ||
+    (subtab === 'servers' && isBt)
       ? 'overview'
       : subtab
 
@@ -227,6 +230,16 @@ export function TaskInspectorDrawer({
                         <TrackerIcon className="size-3.5" />
                       </TabsTrigger>
                     )}
+                    {!isBt && (
+                      <TabsTrigger
+                        value="servers"
+                        className="text-xs px-5"
+                        aria-label={t('panel.downloads.inspector.tab.servers')}
+                        title={t('panel.downloads.inspector.tab.servers')}
+                      >
+                        <ServerIcon className="size-3.5" />
+                      </TabsTrigger>
+                    )}
                     <TabsTrigger
                       value="activity"
                       className="text-xs px-5"
@@ -267,6 +280,11 @@ export function TaskInspectorDrawer({
                   {isBt && (
                     <TabsContent value="trackers" className="min-h-0">
                       <TrackersTab task={single} />
+                    </TabsContent>
+                  )}
+                  {!isBt && (
+                    <TabsContent value="servers" className="min-h-0">
+                      <ServersTab task={single} />
                     </TabsContent>
                   )}
                   <TabsContent value="activity" className="min-h-0">

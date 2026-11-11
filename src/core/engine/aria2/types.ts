@@ -155,3 +155,16 @@ export interface Aria2RequeueResult {
   gid: string
   strategy: Aria2RequeueStrategy
 }
+
+export interface Aria2RawServer {
+  uri: string
+  currentUri: string
+  downloadSpeed: string
+  ip: string
+  port: string
+}
+
+export interface Aria2RawServerGroup {
+  index: string
+  servers: Aria2RawServer[]
+}

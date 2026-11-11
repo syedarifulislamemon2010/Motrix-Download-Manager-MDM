@@ -44,6 +44,7 @@ import { createGetTaskHttpRetryAvailabilityHandler } from '@core/task/direct-tas
 import { createGetTaskFilesHandler } from '@core/task/get-task-files'
 import { createGetTaskPeersHandler } from '@core/task/get-task-peers'
 import { createGetTaskPiecesHandler } from '@core/task/get-task-pieces'
+import { createGetTaskServersHandler } from '@core/task/get-task-servers'
 import type { MediaMetaStore } from '@core/task/media-meta-store'
 import { slimTasksForBroadcast } from '@core/task/slim-task-for-broadcast'
 import type { TaskManager } from '@core/task/task-manager'
@@ -285,6 +286,11 @@ export function buildServerQueryHandlers(
     }),
 
     [Queries.GetTaskPeers]: createGetTaskPeersHandler({
+      engineAdapter,
+      taskManager,
+      geoipManager,
+    }),
+    [Queries.GetTaskServers]: createGetTaskServersHandler({
       engineAdapter,
       taskManager,
       geoipManager,

@@ -1128,7 +1128,8 @@
           "overview": "Vue d’ensemble",
           "peers": "Pairs",
           "pieces": "Blocs",
-          "trackers": "Trackers"
+          "trackers": "Trackers",
+          "servers": "Servers"
         },
         "trackers": {
           "action": {
@@ -1166,6 +1167,17 @@
             "excluded": "Les {{count}} trackers que vous avez supprimés sont exclus des mises à jour automatiques.",
             "apply": "Appliquer la mise à jour",
             "changesPending": "Changements en attente : {{count}}"
+          }
+        },
+        "servers": {
+          "summary": "{{count}} server(s)",
+          "empty": "No download servers connected",
+          "col": {
+            "country": "Geo",
+            "endpoint": "IP : Port",
+            "uri": "URI",
+            "down": "↓",
+            "latency": "Latency"
           }
         }
       },

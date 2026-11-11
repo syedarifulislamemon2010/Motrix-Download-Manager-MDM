@@ -11,6 +11,7 @@ import type {
   Aria2RawFile,
   Aria2RawGlobalStat,
   Aria2RawPeer,
+  Aria2RawServerGroup,
   Aria2RawStatus,
   Aria2RawUri,
   Aria2RequeueResult,
@@ -284,6 +285,10 @@ export class Aria2RpcClient {
 
   getPeers(gid: string): Promise<Aria2RawPeer[]> {
     return this.call<Aria2RawPeer[]>('aria2.getPeers', [gid])
+  }
+
+  getServers(gid: string): Promise<Aria2RawServerGroup[]> {
+    return this.call<Aria2RawServerGroup[]>('aria2.getServers', [gid])
   }
 
   // ─── Global ──────────────────────────────────────────────────
