@@ -3,6 +3,7 @@ import { homedir } from 'node:os'
 import path from 'node:path'
 import { TaskActivityService, TaskActivityStore } from '@core/activity'
 import { createDownloadDirectories } from '@core/bridge-receiver/download-directories'
+import { CrashReporterService } from '@core/crash'
 import { Aria2SegmentClient } from '@core/download/aria2-segment-client'
 import { Aria2Adapter } from '@core/engine/aria2/aria2-adapter'
 import { Aria2ConfigBuilder } from '@core/engine/aria2/aria2-config-builder'
@@ -551,6 +552,12 @@ const archiveService = new ArchiveService({
   getSettings: () => settingsManager.getAutoExtract(),
 })
 
+const crashReporter = new CrashReporterService({
+  appName: app.getName() || 'Motrix',
+  appVersion: app.getVersion() || '2.4.1',
+  isPortable: Boolean(portableProfile),
+})
+
 // ─── Task lifecycle helpers ─────────────────────────────
 
 const finalNamePicker = new FinalNamePickerImpl({
@@ -878,6 +885,7 @@ setupExceptionHandler({
   isDev: platform.isDev,
   getWindow: () => windowManager?.get('main') ?? null,
   onFatalError: performCleanup,
+  crashReporter,
 })
 
 const launcher = setupLauncher({
@@ -2706,6 +2714,7 @@ async function initializeMainProcess(): Promise<void> {
       activeTaskInspectorActivityRuntime.runTaskMutation(taskIds, operation),
     publishTaskUpdate,
     publishTaskUpdateNow,
+    crashReporter,
   }
 
   registerAllCommands(commandRegistry, commandDeps)
@@ -3088,6 +3097,7 @@ async function initializeMainProcess(): Promise<void> {
     ) => activeTaskInspectorActivityRuntime.runTaskMutation(taskIds, operation),
     publishTaskUpdate,
     publishTaskUpdateNow,
+    crashReporter,
   }
 
   const networkMonitor = new NetworkInterfaceMonitor({
@@ -3238,6 +3248,7 @@ async function initializeMainProcess(): Promise<void> {
     builtinUpdater,
     overlayDir,
     archiveService,
+    crashReporter,
   }
 
   const mainCommandHandlers = buildCommandHandlers(commandContext)
@@ -3320,6 +3331,7 @@ async function initializeMainProcess(): Promise<void> {
     networkMonitor,
     mcpAuditLog,
     archiveService,
+    crashReporter,
   })
   const disposeDownloadProgress = setupDownloadProgress({
     eventBus,

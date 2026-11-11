@@ -1803,7 +1803,8 @@
         "repositoryDescription": "Răsfoiește codul pe GitHub",
         "title": "Resurse",
         "website": "Site oficial",
-        "websiteDescription": "Vizitează motrix.app"
+        "websiteDescription": "Vizitează motrix.app",
+        "reportIssue": "Report an issue"
       },
       "tagline": "Înainte ca tot conținutul să dispară, păstrează ceea ce contează cu adevărat și fă loc frumuseții în colecția ta.",
       "update": {
@@ -3543,7 +3544,8 @@
     "restored": "Interfață restabilită",
     "wait": "Continuă așteptarea",
     "routeTitle": "Această pagină nu a putut fi afișată",
-    "submissionNotice": "Trimiterea anterioară poate fi finalizată. Verifică descărcările înainte de a crea din nou aceeași sarcină."
+    "submissionNotice": "Trimiterea anterioară poate fi finalizată. Verifică descărcările înainte de a crea din nou aceeași sarcină.",
+    "reportIssue": "Report on GitHub"
   },
   "pluginOperations": {
     "requiredField": "Câmp obligatoriu",
@@ -3621,5 +3623,13 @@
     "invalidOptions": "Fiecare listă acceptă până la {{limit}} URL-uri valide. Torrentele private necesită un tracker.",
     "menuLabel": "Creează un fișier torrent…",
     "downloadRequested": "Descărcare solicitată: {{path}}"
+  },
+  "crashReport": {
+    "title": "Crash Report & Diagnostics",
+    "reportIssue": "Report on GitHub",
+    "copyDetails": "Copy crash report",
+    "detailsCopied": "Crash report copied to clipboard",
+    "description": "Pre-filled GitHub issue with scrubbed system details and error stack.",
+    "privacyNotice": "User directories and credentials have been scrubbed."
   }
 }

@@ -1515,7 +1515,8 @@
         "website": "Hivatalos weboldal",
         "websiteDescription": "A motrix.app megnyitása",
         "acknowledgments": "Közreműködők",
-        "acknowledgmentsDescription": "A projekt közreműködőinek megtekintése a motrix.app oldalon"
+        "acknowledgmentsDescription": "A projekt közreműködőinek megtekintése a motrix.app oldalon",
+        "reportIssue": "Report an issue"
       }
     },
     "bittorrent": {
@@ -3519,7 +3520,8 @@
     "restored": "A felület helyreállt",
     "wait": "Várakozás folytatása",
     "routeTitle": "Az oldal nem jeleníthető meg",
-    "submissionNotice": "Az előző beküldés már befejeződhetett. Ugyanazon feladat újbóli létrehozása előtt ellenőrizze a letöltéseket."
+    "submissionNotice": "Az előző beküldés már befejeződhetett. Ugyanazon feladat újbóli létrehozása előtt ellenőrizze a letöltéseket.",
+    "reportIssue": "Report on GitHub"
   },
   "pluginOperations": {
     "requiredField": "Kötelező mező",
@@ -3597,5 +3599,13 @@
     "invalidOptions": "Listánként legfeljebb {{limit}} érvényes URL adható meg. A privát torrenthez tracker szükséges.",
     "menuLabel": "Torrentfájl létrehozása…",
     "downloadRequested": "Letöltés kérve: {{path}}"
+  },
+  "crashReport": {
+    "title": "Crash Report & Diagnostics",
+    "reportIssue": "Report on GitHub",
+    "copyDetails": "Copy crash report",
+    "detailsCopied": "Crash report copied to clipboard",
+    "description": "Pre-filled GitHub issue with scrubbed system details and error stack.",
+    "privacyNotice": "User directories and credentials have been scrubbed."
   }
 }

@@ -1784,7 +1784,8 @@
         "repositoryDescription": "Περιηγηθείτε στον κώδικα στο GitHub",
         "title": "Πόροι",
         "website": "Επίσημος ιστότοπος",
-        "websiteDescription": "Επισκεφθείτε το motrix.app"
+        "websiteDescription": "Επισκεφθείτε το motrix.app",
+        "reportIssue": "Report an issue"
       },
       "tagline": "Πριν χαθεί το περιεχόμενο, διαφυλάξτε όσα έχουν πραγματική αξία και δώστε στην ομορφιά μια θέση στη συλλογή σας.",
       "update": {
@@ -3519,7 +3520,8 @@
     "restored": "Η διεπαφή αποκαταστάθηκε",
     "wait": "Συνέχιση αναμονής",
     "routeTitle": "Δεν ήταν δυνατή η εμφάνιση αυτής της σελίδας",
-    "submissionNotice": "Η προηγούμενη υποβολή ενδέχεται να ολοκληρώθηκε. Ελέγξτε τις λήψεις πριν δημιουργήσετε ξανά την ίδια εργασία."
+    "submissionNotice": "Η προηγούμενη υποβολή ενδέχεται να ολοκληρώθηκε. Ελέγξτε τις λήψεις πριν δημιουργήσετε ξανά την ίδια εργασία.",
+    "reportIssue": "Report on GitHub"
   },
   "pluginOperations": {
     "requiredField": "Υποχρεωτικό πεδίο",
@@ -3597,5 +3599,13 @@
     "invalidOptions": "Έως {{limit}} έγκυρα URL ανά λίστα. Τα ιδιωτικά torrent απαιτούν tracker.",
     "menuLabel": "Δημιουργία αρχείου torrent…",
     "downloadRequested": "Ζητήθηκε λήψη: {{path}}"
+  },
+  "crashReport": {
+    "title": "Crash Report & Diagnostics",
+    "reportIssue": "Report on GitHub",
+    "copyDetails": "Copy crash report",
+    "detailsCopied": "Crash report copied to clipboard",
+    "description": "Pre-filled GitHub issue with scrubbed system details and error stack.",
+    "privacyNotice": "User directories and credentials have been scrubbed."
   }
 }

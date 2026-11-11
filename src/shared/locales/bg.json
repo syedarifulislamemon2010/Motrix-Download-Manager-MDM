@@ -1784,7 +1784,8 @@
         "repositoryDescription": "Преглед на кода в GitHub",
         "title": "Ресурси",
         "website": "Официален уебсайт",
-        "websiteDescription": "Посетете motrix.app"
+        "websiteDescription": "Посетете motrix.app",
+        "reportIssue": "Report an issue"
       },
       "tagline": "Преди съдържанието да изчезне, запазете онова, което наистина има значение, и отредете място на красотата в своята колекция.",
       "update": {
@@ -3519,7 +3520,8 @@
     "restored": "Интерфейсът е възстановен",
     "wait": "Продължаване на изчакването",
     "routeTitle": "Страницата не може да бъде показана",
-    "submissionNotice": "Предишното изпращане може да е завършило. Проверете изтеглянията, преди да създадете същата задача отново."
+    "submissionNotice": "Предишното изпращане може да е завършило. Проверете изтеглянията, преди да създадете същата задача отново.",
+    "reportIssue": "Report on GitHub"
   },
   "pluginOperations": {
     "requiredField": "Задължително поле",
@@ -3597,5 +3599,13 @@
     "invalidOptions": "До {{limit}} валидни URL адреса в списък. Частните торенти изискват тракер.",
     "menuLabel": "Създаване на торент файл…",
     "downloadRequested": "Заявено е изтегляне: {{path}}"
+  },
+  "crashReport": {
+    "title": "Crash Report & Diagnostics",
+    "reportIssue": "Report on GitHub",
+    "copyDetails": "Copy crash report",
+    "detailsCopied": "Crash report copied to clipboard",
+    "description": "Pre-filled GitHub issue with scrubbed system details and error stack.",
+    "privacyNotice": "User directories and credentials have been scrubbed."
   }
 }

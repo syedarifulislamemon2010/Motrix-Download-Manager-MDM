@@ -1803,7 +1803,8 @@
         "repositoryDescription": "Exploreu el codi a GitHub",
         "title": "Recursos",
         "website": "Lloc web oficial",
-        "websiteDescription": "Visiteu motrix.app"
+        "websiteDescription": "Visiteu motrix.app",
+        "reportIssue": "Report an issue"
       },
       "tagline": "Abans que el contingut desaparegui, preserveu allò que realment importa i feu lloc a la bellesa entre les coses que conserveu.",
       "update": {
@@ -3543,7 +3544,8 @@
     "restored": "Interfície restaurada",
     "wait": "Continua esperant",
     "routeTitle": "No s’ha pogut mostrar aquesta pàgina",
-    "submissionNotice": "L’enviament anterior pot haver finalitzat. Comprova les baixades abans de tornar a crear la mateixa tasca."
+    "submissionNotice": "L’enviament anterior pot haver finalitzat. Comprova les baixades abans de tornar a crear la mateixa tasca.",
+    "reportIssue": "Report on GitHub"
   },
   "pluginOperations": {
     "requiredField": "Camp obligatori",
@@ -3621,5 +3623,13 @@
     "invalidOptions": "Cada llista admet fins a {{limit}} URL vàlids. Els torrents privats necessiten un rastrejador.",
     "menuLabel": "Crea un fitxer torrent…",
     "downloadRequested": "S’ha sol·licitat la baixada de {{path}}"
+  },
+  "crashReport": {
+    "title": "Crash Report & Diagnostics",
+    "reportIssue": "Report on GitHub",
+    "copyDetails": "Copy crash report",
+    "detailsCopied": "Crash report copied to clipboard",
+    "description": "Pre-filled GitHub issue with scrubbed system details and error stack.",
+    "privacyNotice": "User directories and credentials have been scrubbed."
   }
 }

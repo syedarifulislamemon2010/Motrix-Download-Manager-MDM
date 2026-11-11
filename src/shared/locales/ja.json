@@ -1501,7 +1501,8 @@
         "website": "公式サイト",
         "websiteDescription": "motrix.app を開く",
         "acknowledgments": "謝辞",
-        "acknowledgmentsDescription": "motrix.app でプロジェクトのクレジットを表示"
+        "acknowledgmentsDescription": "motrix.app でプロジェクトのクレジットを表示",
+        "reportIssue": "Report an issue"
       }
     },
     "bittorrent": {
@@ -3495,7 +3496,8 @@
     "restored": "画面を復元しました",
     "wait": "待機を続ける",
     "routeTitle": "このページを表示できませんでした",
-    "submissionNotice": "前の送信は完了している可能性があります。同じタスクを作成する前に、ダウンロード一覧を確認してください。"
+    "submissionNotice": "前の送信は完了している可能性があります。同じタスクを作成する前に、ダウンロード一覧を確認してください。",
+    "reportIssue": "Report on GitHub"
   },
   "pluginOperations": {
     "requiredField": "必須項目",
@@ -3573,5 +3575,13 @@
     "invalidOptions": "各リストには有効な URL を {{limit}} 件まで入力できます。プライベートトレントにはトラッカーが必要です。",
     "menuLabel": "トレントファイルを作成…",
     "downloadRequested": "ダウンロードをリクエストしました：{{path}}"
+  },
+  "crashReport": {
+    "title": "Crash Report & Diagnostics",
+    "reportIssue": "Report on GitHub",
+    "copyDetails": "Copy crash report",
+    "detailsCopied": "Crash report copied to clipboard",
+    "description": "Pre-filled GitHub issue with scrubbed system details and error stack.",
+    "privacyNotice": "User directories and credentials have been scrubbed."
   }
 }

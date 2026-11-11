@@ -1501,7 +1501,8 @@
         "website": "Trang web chính thức",
         "websiteDescription": "Truy cập motrix.app",
         "acknowledgments": "Lời cảm ơn",
-        "acknowledgmentsDescription": "Xem thông tin đóng góp cho dự án trên motrix.app"
+        "acknowledgmentsDescription": "Xem thông tin đóng góp cho dự án trên motrix.app",
+        "reportIssue": "Report an issue"
       }
     },
     "bittorrent": {
@@ -3495,7 +3496,8 @@
     "restored": "Đã khôi phục giao diện",
     "wait": "Tiếp tục chờ",
     "routeTitle": "Không thể hiển thị trang này",
-    "submissionNotice": "Lần gửi trước có thể đã hoàn tất. Kiểm tra danh sách tải xuống trước khi tạo lại cùng một tác vụ."
+    "submissionNotice": "Lần gửi trước có thể đã hoàn tất. Kiểm tra danh sách tải xuống trước khi tạo lại cùng một tác vụ.",
+    "reportIssue": "Report on GitHub"
   },
   "pluginOperations": {
     "requiredField": "Trường bắt buộc",
@@ -3573,5 +3575,13 @@
     "invalidOptions": "Mỗi danh sách nhận tối đa {{limit}} URL hợp lệ. Torrent riêng tư cần có tracker.",
     "menuLabel": "Tạo tệp torrent…",
     "downloadRequested": "Đã yêu cầu tải xuống: {{path}}"
+  },
+  "crashReport": {
+    "title": "Crash Report & Diagnostics",
+    "reportIssue": "Report on GitHub",
+    "copyDetails": "Copy crash report",
+    "detailsCopied": "Crash report copied to clipboard",
+    "description": "Pre-filled GitHub issue with scrubbed system details and error stack.",
+    "privacyNotice": "User directories and credentials have been scrubbed."
   }
 }

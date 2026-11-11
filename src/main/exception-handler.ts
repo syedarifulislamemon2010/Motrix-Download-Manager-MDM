@@ -1,3 +1,4 @@
+import type { CrashReporterService } from '@core/crash'
 import { getLogger } from '@core/logger'
 import { Events } from '@shared/protocol/events'
 import type { BrowserWindow } from 'electron'
@@ -7,11 +8,13 @@ export function setupExceptionHandler(options: {
   isDev: boolean
   getWindow: () => BrowserWindow | null
   onFatalError: () => Promise<void>
+  crashReporter?: CrashReporterService
 }): void {
   const log = getLogger('crash')
 
   process.on('uncaughtException', (err, origin) => {
     log.fatal({ err, origin }, 'uncaught exception')
+    options.crashReporter?.recordError(err, 'main:uncaughtException')
 
     if (!options.isDev && app.isReady()) {
       try {
@@ -34,6 +37,7 @@ export function setupExceptionHandler(options: {
 
   process.on('unhandledRejection', (reason) => {
     log.error({ reason }, 'unhandled rejection')
+    options.crashReporter?.recordError(reason, 'main:unhandledRejection')
 
     try {
       const win = options.getWindow()

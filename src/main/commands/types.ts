@@ -13,6 +13,7 @@ import type { OccurrenceDispatcher } from '@core/task/occurrences/occurrence-dis
 import type { TaskManager } from '@core/task/task-manager'
 import type { TorrentMetaStore } from '@core/task/torrent-meta-store'
 import type { MagnetTracker } from '@core/torrent/magnet-tracker'
+import type { CrashReporterService } from '@core/crash'
 import type { MenuContext } from '@shared/types/menu-context'
 import type { AppUpdateService } from '../core/app-update-service'
 import type { createProtocolManager } from '../platform/protocol-manager'
@@ -50,6 +51,7 @@ export interface CommandDeps {
   /** Coalesced / immediate TaskUpdated publication (TaskUpdatePublisher). */
   publishTaskUpdate: TaskActionDeps['publishTaskUpdate']
   publishTaskUpdateNow: TaskActionDeps['publishTaskUpdateNow']
+  crashReporter?: CrashReporterService
 }
 
 export interface CommandExecContext<TArgs = void> {

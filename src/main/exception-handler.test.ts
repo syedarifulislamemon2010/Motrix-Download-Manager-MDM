@@ -94,4 +94,32 @@ describe('setupExceptionHandler', () => {
       expect.objectContaining({ message: 'rejected', fatal: false })
     )
   })
+
+  it('records error into crashReporter on uncaughtException and unhandledRejection', () => {
+    const mockRecordError = vi.fn()
+    const crashReporter = { recordError: mockRecordError } as never
+
+    setupExceptionHandler({
+      isDev: true,
+      getWindow: () => null,
+      onFatalError: async () => {},
+      crashReporter,
+    })
+
+    const uncaughtHandler = listeners.get('uncaughtException')
+    const testErr = new Error('crash boom')
+    uncaughtHandler?.(testErr, 'uncaughtException')
+    expect(mockRecordError).toHaveBeenCalledWith(
+      testErr,
+      'main:uncaughtException'
+    )
+
+    const unhandledHandler = listeners.get('unhandledRejection')
+    const rejectReason = new Error('promise boom')
+    unhandledHandler?.(rejectReason, Promise.resolve())
+    expect(mockRecordError).toHaveBeenCalledWith(
+      rejectReason,
+      'main:unhandledRejection'
+    )
+  })
 })

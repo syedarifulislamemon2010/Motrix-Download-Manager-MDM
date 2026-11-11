@@ -1,3 +1,4 @@
+import type { CrashReporterService } from '@core/crash'
 import type { Aria2RpcClient } from '@core/engine/aria2/aria2-rpc-client'
 import type { DnsFallbackConsumer } from '@core/engine/aria2/dns-fallback'
 import { dnsModeToAsyncDns } from '@core/engine/aria2/dns-fallback'
@@ -99,6 +100,7 @@ import {
   removeTasksPayloadSchema,
   taskIdsPayloadSchema,
 } from '@shared/schemas/bulk-task-command'
+import { crashReportRequestSchema } from '@shared/schemas/crash-report'
 import { languagePreferenceSchema } from '@shared/schemas/locale'
 import { mcpSettingsSchema } from '@shared/schemas/mcp-settings'
 import { moveTasksPayloadSchema } from '@shared/schemas/move-tasks'
@@ -198,6 +200,7 @@ export interface ServerCommandContext {
   magnetTracker: MagnetTracker
   networkMonitor?: NetworkInterfaceMonitor
   mcpAuditLog?: McpAuditLog
+  crashReporter?: CrashReporterService
   activityRecorder: TaskActivityRecorder
   persistTask?: NonNullable<TaskActionDeps['persistTask']>
   persistTaskWithPluginMetadata?: NonNullable<
@@ -1104,6 +1107,36 @@ export function buildServerCommandHandlers(
       const patch = autoExtractSettingsSchema.partial().parse(payload)
       const result = await settingsManager.saveAutoExtractSettings(patch)
       return { ok: true, settings: result.settings }
+    },
+
+    [Commands.OpenCrashReportIssue]: async (payload: unknown) => {
+      const parsed = crashReportRequestSchema.parse(payload)
+      const err = parsed?.error
+        ? Object.assign(new Error(parsed.error.message), {
+            name: parsed.error.name ?? 'Error',
+            stack: parsed.error.stack,
+          })
+        : undefined
+      const url = ctx.crashReporter
+        ? ctx.crashReporter.getGitHubIssueUrl(
+            err,
+            parsed?.context,
+            parsed?.userDescription
+          )
+        : 'https://github.com/agalwood/Motrix/issues/new'
+      return { ok: true, url }
+    },
+
+    [Commands.RecordClientCrash]: async (payload: unknown) => {
+      const parsed = crashReportRequestSchema.parse(payload)
+      if (parsed?.error && ctx.crashReporter) {
+        const err = Object.assign(new Error(parsed.error.message), {
+          name: parsed.error.name ?? 'Error',
+          stack: parsed.error.stack,
+        })
+        ctx.crashReporter.recordError(err, parsed.context ?? 'renderer:client')
+      }
+      return { ok: true }
     },
 
     [Commands.ExtractArchive]: async (payload: unknown) => {

@@ -1,5 +1,6 @@
 import path from 'node:path'
 import type { TaskActivityService } from '@core/activity'
+import type { CrashReporterService } from '@core/crash'
 import type { EngineAdapter } from '@core/engine/engine-adapter'
 import type { EngineSupervisor } from '@core/engine/engine-supervisor'
 import { getTuningRecommendation } from '@core/engine/get-tuning-recommendation'
@@ -52,6 +53,7 @@ import {
 import type { QueryHandlerMap } from '@shared/protocol/handler-types'
 import { Queries } from '@shared/protocol/queries'
 import { checkTaskFileExistsPayloadSchema } from '@shared/schemas/check-task-file'
+import { crashReportRequestSchema } from '@shared/schemas/crash-report'
 import { PluginLogRequestSchema } from '@shared/schemas/plugin-logs'
 import { parseTaskInspectorActivitySnapshot } from '@shared/schemas/task-inspector-activity'
 import { taskTrackerRequestSchema } from '@shared/schemas/task-tracker'
@@ -108,6 +110,7 @@ export interface QueryContext {
   networkMonitor?: NetworkInterfaceMonitor
   mcpAuditLog?: McpAuditLog
   archiveService?: ArchiveService
+  crashReporter?: CrashReporterService
 }
 
 export function buildQueryHandlers(ctx: QueryContext): QueryHandlerMap {
@@ -231,6 +234,40 @@ export function buildQueryHandlers(ctx: QueryContext): QueryHandlerMap {
         available: Boolean(foundPath),
         executablePath: foundPath ?? null,
       }
+    },
+
+    [Queries.GetCrashReport]: async (payload: unknown) => {
+      const parsed = crashReportRequestSchema.parse(payload)
+      const err = parsed?.error
+        ? Object.assign(new Error(parsed.error.message), {
+            name: parsed.error.name ?? 'Error',
+            stack: parsed.error.stack,
+          })
+        : undefined
+      return ctx.crashReporter
+        ? ctx.crashReporter.buildReport(
+            err,
+            parsed?.context,
+            parsed?.userDescription
+          )
+        : null
+    },
+
+    [Queries.GetCrashReportUrl]: async (payload: unknown) => {
+      const parsed = crashReportRequestSchema.parse(payload)
+      const err = parsed?.error
+        ? Object.assign(new Error(parsed.error.message), {
+            name: parsed.error.name ?? 'Error',
+            stack: parsed.error.stack,
+          })
+        : undefined
+      return ctx.crashReporter
+        ? ctx.crashReporter.getGitHubIssueUrl(
+            err,
+            parsed?.context,
+            parsed?.userDescription
+          )
+        : 'https://github.com/agalwood/Motrix/issues/new'
     },
 
     [Queries.GetUpdateState]: async () => updateManager.getState(),

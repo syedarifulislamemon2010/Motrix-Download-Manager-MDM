@@ -195,6 +195,19 @@ export function showRendererFailure(scope: 'bootstrap' | 'root'): void {
         })
     }
     actions.append(diagnostics)
+
+    const reportIssue = document.createElement('button')
+    reportIssue.type = 'button'
+    reportIssue.textContent =
+      (copy as { reportIssue?: string }).reportIssue || 'Report on GitHub'
+    reportIssue.onclick = () => {
+      void wire
+        .invoke(Commands.OpenCrashReportIssue, {
+          context: `renderer:fallback:${scope}`,
+        })
+        .catch(() => {})
+    }
+    actions.append(reportIssue)
   }
   content.append(brand, title, description, actions)
   panel.append(style, content)

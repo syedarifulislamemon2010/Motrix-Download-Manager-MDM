@@ -115,6 +115,9 @@ export const Queries = {
   // Archive Auto-Extract (F4)
   GetAutoExtractSettings: 'query:getAutoExtractSettings',
   Detect7zStatus: 'query:detect7zStatus',
+  // Crash Report & Diagnostics (F9)
+  GetCrashReport: 'query:getCrashReport',
+  GetCrashReportUrl: 'query:getCrashReportUrl',
 } as const
 
 export type QueryChannel = (typeof Queries)[keyof typeof Queries]

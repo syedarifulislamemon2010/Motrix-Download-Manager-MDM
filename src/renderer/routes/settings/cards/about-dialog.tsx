@@ -14,7 +14,9 @@ import {
   ScrollBar,
 } from '@renderer/components/ui/scroll-area'
 import { usePortableMode } from '@renderer/hooks/use-portable-mode'
+import { transport } from '@renderer/lib/transport'
 import { EXTERNAL_URLS } from '@shared/external-urls'
+import { Commands } from '@shared/protocol/commands'
 import { useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { AppUpdateSection } from './app-update-section'
@@ -154,6 +156,17 @@ export function AboutDialog({
               href={EXTERNAL_URLS.motrix.acknowledgments}
               title={t('settings.about.resources.acknowledgments')}
             />
+            <button
+              type="button"
+              onClick={() => {
+                void transport.invoke(Commands.OpenCrashReportIssue, {
+                  context: 'settings:about',
+                })
+              }}
+              className="rounded-md px-2 py-1 text-xs font-medium text-muted-foreground outline-none transition-[color,background-color] hover:bg-accent/70 hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              {t('settings.about.resources.reportIssue')}
+            </button>
           </nav>
         </section>
 

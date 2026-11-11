@@ -1467,7 +1467,8 @@
         "website": "官方网站",
         "websiteDescription": "访问 motrix.app",
         "acknowledgments": "致谢",
-        "acknowledgmentsDescription": "在 motrix.app 查看项目致谢"
+        "acknowledgmentsDescription": "在 motrix.app 查看项目致谢",
+        "reportIssue": "反馈问题"
       }
     },
     "advanced": {
@@ -3495,7 +3496,8 @@
     "restored": "界面已恢复",
     "wait": "继续等待",
     "routeTitle": "此页面暂时无法显示",
-    "submissionNotice": "上次提交可能已经完成，请先检查下载列表，避免重复创建任务。"
+    "submissionNotice": "上次提交可能已经完成，请先检查下载列表，避免重复创建任务。",
+    "reportIssue": "在 GitHub 上反馈"
   },
   "pluginOperations": {
     "requiredField": "必填项",
@@ -3573,5 +3575,13 @@
     "invalidOptions": "每个列表最多 {{limit}} 个有效 URL。私有种子至少需要一个 Tracker。",
     "menuLabel": "创建种子文件…",
     "downloadRequested": "已请求下载 {{path}}"
+  },
+  "crashReport": {
+    "title": "崩溃报告与诊断",
+    "reportIssue": "在 GitHub 上反馈",
+    "copyDetails": "复制崩溃报告",
+    "detailsCopied": "崩溃报告已复制到剪贴板",
+    "description": "已脱敏系统信息与错误堆栈的 GitHub Issue 预填内容。",
+    "privacyNotice": "用户目录和认证信息已自动脱敏。"
   }
 }

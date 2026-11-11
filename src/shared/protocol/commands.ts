@@ -43,6 +43,9 @@ export const Commands = {
   // Archive Auto-Extract (F4)
   ExtractArchive: 'command:extractArchive',
   SaveAutoExtractSettings: 'command:saveAutoExtractSettings',
+  // Crash Report & Diagnostics (F9)
+  OpenCrashReportIssue: 'command:openCrashReportIssue',
+  RecordClientCrash: 'command:recordClientCrash',
   PauseTask: 'command:pauseTask',
   ResumeTask: 'command:resumeTask',
   RemoveTask: 'command:removeTask',

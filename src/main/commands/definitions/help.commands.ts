@@ -32,8 +32,11 @@ export function registerHelpCommands(
   registry.register({
     id: CommandIds.HelpReportProblem,
     title: 'menu.help.reportProblem',
-    run: () => {
-      shell.openExternal(EXTERNAL_URLS.github.issues)
+    run: (ctx) => {
+      const issueUrl =
+        ctx.deps.crashReporter?.getGitHubIssueUrl(undefined, 'menu:help') ??
+        EXTERNAL_URLS.github.issues
+      shell.openExternal(issueUrl)
     },
   })
 }

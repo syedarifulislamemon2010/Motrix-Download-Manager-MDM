@@ -1765,7 +1765,8 @@
         "repositoryDescription": "ดูโค้ดบน GitHub",
         "title": "แหล่งข้อมูล",
         "website": "เว็บไซต์ทางการ",
-        "websiteDescription": "ไปที่ motrix.app"
+        "websiteDescription": "ไปที่ motrix.app",
+        "reportIssue": "Report an issue"
       },
       "tagline": "ก่อนเนื้อหาจะเลือนหาย เก็บสิ่งที่มีความหมายอย่างแท้จริง และให้ความงามเป็นส่วนหนึ่งของสิ่งที่คุณรักษาไว้",
       "update": {
@@ -3495,7 +3496,8 @@
     "restored": "กู้คืนหน้าจอแล้ว",
     "wait": "รอต่อไป",
     "routeTitle": "ไม่สามารถแสดงหน้านี้ได้",
-    "submissionNotice": "การส่งครั้งก่อนอาจเสร็จสมบูรณ์แล้ว โปรดตรวจสอบรายการดาวน์โหลดก่อนสร้างงานเดิมอีกครั้ง"
+    "submissionNotice": "การส่งครั้งก่อนอาจเสร็จสมบูรณ์แล้ว โปรดตรวจสอบรายการดาวน์โหลดก่อนสร้างงานเดิมอีกครั้ง",
+    "reportIssue": "Report on GitHub"
   },
   "pluginOperations": {
     "requiredField": "ช่องที่ต้องกรอก",
@@ -3573,5 +3575,13 @@
     "invalidOptions": "แต่ละรายการมี URL ที่ถูกต้องได้สูงสุด {{limit}} รายการ ทอร์เรนต์ส่วนตัวต้องมีแทร็กเกอร์",
     "menuLabel": "สร้างไฟล์ทอร์เรนต์…",
     "downloadRequested": "ขอดาวน์โหลดแล้ว: {{path}}"
+  },
+  "crashReport": {
+    "title": "Crash Report & Diagnostics",
+    "reportIssue": "Report on GitHub",
+    "copyDetails": "Copy crash report",
+    "detailsCopied": "Crash report copied to clipboard",
+    "description": "Pre-filled GitHub issue with scrubbed system details and error stack.",
+    "privacyNotice": "User directories and credentials have been scrubbed."
   }
 }

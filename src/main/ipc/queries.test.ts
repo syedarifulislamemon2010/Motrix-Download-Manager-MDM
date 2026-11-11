@@ -929,4 +929,49 @@ describe('CheckTaskFileExists query', () => {
 
     await rm(root, { recursive: true, force: true })
   })
+
+  it('handles Queries.GetCrashReport and Queries.GetCrashReportUrl', async () => {
+    const mockBuildReport = vi
+      .fn()
+      .mockReturnValue({ scrubbed: true, title: 'Crash' })
+    const mockGetGitHubIssueUrl = vi
+      .fn()
+      .mockReturnValue(
+        'https://github.com/agalwood/Motrix/issues/new?title=Report'
+      )
+
+    const crashReporter = {
+      buildReport: mockBuildReport,
+      getGitHubIssueUrl: mockGetGitHubIssueUrl,
+    }
+
+    const handlers = buildQueryHandlers({
+      userDataDir: '/tmp',
+      crashReporter,
+    } as unknown as QueryContext)
+
+    const report = await handlers[Queries.GetCrashReport]?.({
+      error: { message: 'Crash boom' },
+      context: 'test:context',
+    })
+    expect(report).toEqual({ scrubbed: true, title: 'Crash' })
+    expect(mockBuildReport).toHaveBeenCalledWith(
+      expect.objectContaining({ message: 'Crash boom' }),
+      'test:context',
+      undefined
+    )
+
+    const url = await handlers[Queries.GetCrashReportUrl]?.({
+      error: { message: 'Crash boom' },
+      context: 'test:context',
+    })
+    expect(url).toBe(
+      'https://github.com/agalwood/Motrix/issues/new?title=Report'
+    )
+    expect(mockGetGitHubIssueUrl).toHaveBeenCalledWith(
+      expect.objectContaining({ message: 'Crash boom' }),
+      'test:context',
+      undefined
+    )
+  })
 })

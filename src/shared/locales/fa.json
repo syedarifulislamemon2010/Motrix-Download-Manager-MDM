@@ -1784,7 +1784,8 @@
         "repositoryDescription": "مرور کد در GitHub",
         "title": "منابع",
         "website": "وب‌سایت رسمی",
-        "websiteDescription": "بازدید از motrix.app"
+        "websiteDescription": "بازدید از motrix.app",
+        "reportIssue": "Report an issue"
       },
       "tagline": "پیش از آنکه محتوا ناپدید شود، آنچه واقعاً مهم است حفظ کنید و برای زیبایی در مجموعهٔ خود جایی بسازید.",
       "update": {
@@ -3519,7 +3520,8 @@
     "restored": "رابط بازیابی شد",
     "wait": "ادامهٔ انتظار",
     "routeTitle": "نمایش این صفحه ممکن نشد",
-    "submissionNotice": "ارسال قبلی ممکن است تکمیل شده باشد. پیش از ایجاد دوبارهٔ همان کار، بارگیری‌ها را بررسی کنید."
+    "submissionNotice": "ارسال قبلی ممکن است تکمیل شده باشد. پیش از ایجاد دوبارهٔ همان کار، بارگیری‌ها را بررسی کنید.",
+    "reportIssue": "Report on GitHub"
   },
   "pluginOperations": {
     "requiredField": "فیلد الزامی",
@@ -3597,5 +3599,13 @@
     "invalidOptions": "هر فهرست حداکثر {{limit}} نشانی معتبر می‌پذیرد. تورنت خصوصی به ترکر نیاز دارد.",
     "menuLabel": "ساخت فایل تورنت…",
     "downloadRequested": "درخواست دانلود: {{path}}"
+  },
+  "crashReport": {
+    "title": "Crash Report & Diagnostics",
+    "reportIssue": "Report on GitHub",
+    "copyDetails": "Copy crash report",
+    "detailsCopied": "Crash report copied to clipboard",
+    "description": "Pre-filled GitHub issue with scrubbed system details and error stack.",
+    "privacyNotice": "User directories and credentials have been scrubbed."
   }
 }

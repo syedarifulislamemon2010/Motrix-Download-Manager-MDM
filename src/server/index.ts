@@ -13,6 +13,7 @@ import { FileRegistryStoreAdapter } from '@core/bridge/registry-store-adapter'
 import { TrustedExtensionRegistry } from '@core/bridge/trusted-extension-registry'
 import { BridgeReceiver } from '@core/bridge-receiver/bridge-receiver'
 import { createDownloadDirectories } from '@core/bridge-receiver/download-directories'
+import { CrashReporterService } from '@core/crash'
 import { Aria2Adapter } from '@core/engine/aria2/aria2-adapter'
 import { Aria2ConfigBuilder } from '@core/engine/aria2/aria2-config-builder'
 import { Aria2ProcessManager } from '@core/engine/aria2/aria2-process-manager'
@@ -627,6 +628,11 @@ async function main() {
   })
   const archiveService = new ArchiveService({
     getSettings: () => settingsManager.getAutoExtract(),
+  })
+  const crashReporter = new CrashReporterService({
+    appName: 'Motrix Server',
+    appVersion: appVersion || '2.4.1',
+    isPortable: false,
   })
   const taskActivityService = new TaskActivityService(
     new TaskActivityStore(db.database),
@@ -1460,6 +1466,7 @@ async function main() {
     networkMonitor,
     mcpAuditLog,
     archiveService,
+    crashReporter,
     authorizeOutputWrite: nasTaskAccess?.authorizeOutputWrite,
     authorizeTaskWrite: nasTaskAccess?.authorizeWrite,
     authorizeTaskRemoval: nasTaskAccess?.authorizeRemoval,
@@ -1639,6 +1646,7 @@ async function main() {
     networkMonitor,
     mcpAuditLog,
     archiveService,
+    crashReporter,
   })
 
   // Operator (control-plane) secret — provisioned INDEPENDENTLY of the

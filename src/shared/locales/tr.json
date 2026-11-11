@@ -1515,7 +1515,8 @@
         "website": "Resmî web sitesi",
         "websiteDescription": "motrix.app adresini ziyaret edin",
         "acknowledgments": "Teşekkürler",
-        "acknowledgmentsDescription": "motrix.app adresinde projeye katkıda bulunanları görün"
+        "acknowledgmentsDescription": "motrix.app adresinde projeye katkıda bulunanları görün",
+        "reportIssue": "Report an issue"
       }
     },
     "bittorrent": {
@@ -3519,7 +3520,8 @@
     "restored": "Arayüz geri yüklendi",
     "wait": "Beklemeye devam et",
     "routeTitle": "Bu sayfa görüntülenemedi",
-    "submissionNotice": "Önceki gönderim tamamlanmış olabilir. Aynı görevi yeniden oluşturmadan önce indirmeleri kontrol edin."
+    "submissionNotice": "Önceki gönderim tamamlanmış olabilir. Aynı görevi yeniden oluşturmadan önce indirmeleri kontrol edin.",
+    "reportIssue": "Report on GitHub"
   },
   "pluginOperations": {
     "requiredField": "Zorunlu alan",
@@ -3597,5 +3599,13 @@
     "invalidOptions": "Her liste en fazla {{limit}} geçerli URL içerebilir. Özel torrentler izleyici gerektirir.",
     "menuLabel": "Torrent dosyası oluştur…",
     "downloadRequested": "İndirme istendi: {{path}}"
+  },
+  "crashReport": {
+    "title": "Crash Report & Diagnostics",
+    "reportIssue": "Report on GitHub",
+    "copyDetails": "Copy crash report",
+    "detailsCopied": "Crash report copied to clipboard",
+    "description": "Pre-filled GitHub issue with scrubbed system details and error stack.",
+    "privacyNotice": "User directories and credentials have been scrubbed."
   }
 }

@@ -1860,7 +1860,8 @@
         "repositoryDescription": "استعراض الشيفرة على GitHub",
         "title": "الموارد",
         "website": "الموقع الرسمي",
-        "websiteDescription": "زيارة motrix.app"
+        "websiteDescription": "زيارة motrix.app",
+        "reportIssue": "Report an issue"
       },
       "tagline": "احفظ ما يهمك حقًا قبل أن يختفي المحتوى، واجعل للجمال مكانًا في مجموعتك.",
       "update": {
@@ -3615,7 +3616,8 @@
     "restored": "تمت استعادة الواجهة",
     "wait": "متابعة الانتظار",
     "routeTitle": "تعذّر عرض هذه الصفحة",
-    "submissionNotice": "ربما اكتمل الإرسال السابق. تحقق من التنزيلات قبل إنشاء المهمة نفسها مجددًا."
+    "submissionNotice": "ربما اكتمل الإرسال السابق. تحقق من التنزيلات قبل إنشاء المهمة نفسها مجددًا.",
+    "reportIssue": "Report on GitHub"
   },
   "pluginOperations": {
     "requiredField": "حقل مطلوب",
@@ -3693,5 +3695,13 @@
     "invalidOptions": "كل قائمة تقبل حتى {{limit}} عنوانًا صالحًا. يحتاج التورنت الخاص إلى متتبّع.",
     "menuLabel": "إنشاء ملف تورنت…",
     "downloadRequested": "طُلب تنزيل {{path}}"
+  },
+  "crashReport": {
+    "title": "Crash Report & Diagnostics",
+    "reportIssue": "Report on GitHub",
+    "copyDetails": "Copy crash report",
+    "detailsCopied": "Crash report copied to clipboard",
+    "description": "Pre-filled GitHub issue with scrubbed system details and error stack.",
+    "privacyNotice": "User directories and credentials have been scrubbed."
   }
 }

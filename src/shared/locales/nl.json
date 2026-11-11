@@ -1784,7 +1784,8 @@
         "repositoryDescription": "Bekijk de code op GitHub",
         "title": "Bronnen",
         "website": "Officiële website",
-        "websiteDescription": "Bezoek motrix.app"
+        "websiteDescription": "Bezoek motrix.app",
+        "reportIssue": "Report an issue"
       },
       "tagline": "Bewaar wat echt telt voordat inhoud verdwijnt en geef schoonheid een plek in je verzameling.",
       "update": {
@@ -3519,7 +3520,8 @@
     "restored": "Interface hersteld",
     "wait": "Blijven wachten",
     "routeTitle": "Deze pagina kon niet worden weergegeven",
-    "submissionNotice": "De vorige aanvraag is mogelijk voltooid. Controleer de downloads voordat je dezelfde taak opnieuw aanmaakt."
+    "submissionNotice": "De vorige aanvraag is mogelijk voltooid. Controleer de downloads voordat je dezelfde taak opnieuw aanmaakt.",
+    "reportIssue": "Report on GitHub"
   },
   "pluginOperations": {
     "requiredField": "Verplicht veld",
@@ -3597,5 +3599,13 @@
     "invalidOptions": "Elke lijst kan maximaal {{limit}} geldige URL’s bevatten. Privétorrents hebben een tracker nodig.",
     "menuLabel": "Torrentbestand maken…",
     "downloadRequested": "Download aangevraagd: {{path}}"
+  },
+  "crashReport": {
+    "title": "Crash Report & Diagnostics",
+    "reportIssue": "Report on GitHub",
+    "copyDetails": "Copy crash report",
+    "detailsCopied": "Crash report copied to clipboard",
+    "description": "Pre-filled GitHub issue with scrubbed system details and error stack.",
+    "privacyNotice": "User directories and credentials have been scrubbed."
   }
 }

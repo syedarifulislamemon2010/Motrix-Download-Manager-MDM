@@ -3,6 +3,8 @@ import {
   setRendererSurface,
   showRendererFailure,
 } from '@renderer/lib/renderer-health'
+import { transport } from '@renderer/lib/transport'
+import { Commands } from '@shared/protocol/commands'
 import { Events } from '@shared/protocol/events'
 import { Component, type ReactNode, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -51,9 +53,21 @@ export function RouteFailure() {
       className="flex h-svh flex-col items-center justify-center gap-4 p-8"
     >
       <h1>{t('rendererRecovery.routeTitle')}</h1>
-      <button type="button" onClick={() => void navigate('/downloads/all')}>
-        {t('rendererRecovery.downloads')}
-      </button>
+      <div className="flex gap-3">
+        <button type="button" onClick={() => void navigate('/downloads/all')}>
+          {t('rendererRecovery.downloads')}
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            void transport.invoke(Commands.OpenCrashReportIssue, {
+              context: 'renderer:route-failure',
+            })
+          }}
+        >
+          {t('rendererRecovery.reportIssue')}
+        </button>
+      </div>
     </section>
   )
 }

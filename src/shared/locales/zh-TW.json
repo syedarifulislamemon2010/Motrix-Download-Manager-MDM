@@ -1501,7 +1501,8 @@
         "website": "官方網站",
         "websiteDescription": "造訪 motrix.app",
         "acknowledgments": "致謝",
-        "acknowledgmentsDescription": "在 motrix.app 查看專案致謝名單"
+        "acknowledgmentsDescription": "在 motrix.app 查看專案致謝名單",
+        "reportIssue": "回報問題"
       }
     },
     "bittorrent": {
@@ -3495,7 +3496,8 @@
     "restored": "介面已恢復",
     "wait": "繼續等待",
     "routeTitle": "此頁面暫時無法顯示",
-    "submissionNotice": "上次提交可能已經完成，請先檢查下載清單，避免重複建立任務。"
+    "submissionNotice": "上次提交可能已經完成，請先檢查下載清單，避免重複建立任務。",
+    "reportIssue": "在 GitHub 上反饋"
   },
   "pluginOperations": {
     "requiredField": "必填項",
@@ -3573,5 +3575,13 @@
     "invalidOptions": "每個清單最多 {{limit}} 個有效網址。私人種子至少需要一個 Tracker。",
     "menuLabel": "建立種子檔案…",
     "downloadRequested": "已要求下載 {{path}}"
+  },
+  "crashReport": {
+    "title": "崩潰報告與診斷",
+    "reportIssue": "在 GitHub 上反饋",
+    "copyDetails": "複製崩潰報告",
+    "detailsCopied": "崩潰報告已複製到剪貼簿",
+    "description": "已脫敏系統資訊與錯誤堆疊的 GitHub Issue 預填內容。",
+    "privacyNotice": "使用者目錄和認證資訊已自動脫敏。"
   }
 }

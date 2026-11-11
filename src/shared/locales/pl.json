@@ -1543,7 +1543,8 @@
         "website": "Oficjalna witryna",
         "websiteDescription": "Odwiedź motrix.app",
         "acknowledgments": "Podziękowania",
-        "acknowledgmentsDescription": "Zobacz informacje o współtwórcach na motrix.app"
+        "acknowledgmentsDescription": "Zobacz informacje o współtwórcach na motrix.app",
+        "reportIssue": "Report an issue"
       }
     },
     "bittorrent": {
@@ -3567,7 +3568,8 @@
     "restored": "Interfejs przywrócony",
     "wait": "Czekaj dalej",
     "routeTitle": "Nie można wyświetlić tej strony",
-    "submissionNotice": "Poprzednie przesłanie mogło zostać ukończone. Sprawdź pobieranie przed ponownym utworzeniem tego samego zadania."
+    "submissionNotice": "Poprzednie przesłanie mogło zostać ukończone. Sprawdź pobieranie przed ponownym utworzeniem tego samego zadania.",
+    "reportIssue": "Report on GitHub"
   },
   "pluginOperations": {
     "requiredField": "Pole wymagane",
@@ -3645,5 +3647,13 @@
     "invalidOptions": "Każda lista może zawierać do {{limit}} poprawnych adresów URL. Prywatny torrent wymaga trackera.",
     "menuLabel": "Utwórz plik torrent…",
     "downloadRequested": "Zlecono pobranie: {{path}}"
+  },
+  "crashReport": {
+    "title": "Crash Report & Diagnostics",
+    "reportIssue": "Report on GitHub",
+    "copyDetails": "Copy crash report",
+    "detailsCopied": "Crash report copied to clipboard",
+    "description": "Pre-filled GitHub issue with scrubbed system details and error stack.",
+    "privacyNotice": "User directories and credentials have been scrubbed."
   }
 }

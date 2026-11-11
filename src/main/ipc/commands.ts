@@ -2,6 +2,7 @@ import { realpath } from 'node:fs/promises'
 import path from 'node:path'
 import { BridgeReceiverError } from '@core/bridge-receiver/errors'
 import type { AdaptedMux } from '@core/bridge-receiver/submit-download-adapter'
+import type { CrashReporterService } from '@core/crash'
 import type { DnsFallbackConsumer } from '@core/engine/aria2/dns-fallback'
 import { dnsModeToAsyncDns } from '@core/engine/aria2/dns-fallback'
 import type { EngineAdapter } from '@core/engine/engine-adapter'
@@ -129,6 +130,7 @@ import {
   taskIdsPayloadSchema,
 } from '@shared/schemas/bulk-task-command'
 import { closeCurrentWindowSchema } from '@shared/schemas/close-current-window'
+import { crashReportRequestSchema } from '@shared/schemas/crash-report'
 import { filePickerOptionsSchema } from '@shared/schemas/file-picker'
 import { mcpSettingsSchema } from '@shared/schemas/mcp-settings'
 import { moveTasksPayloadSchema } from '@shared/schemas/move-tasks'
@@ -270,6 +272,7 @@ export interface CommandContext {
   bridgeManager: BridgeManager
   networkMonitor?: NetworkInterfaceMonitor
   mcpAuditLog?: McpAuditLog
+  crashReporter?: CrashReporterService
   magnetTracker: MagnetTracker
   activityRecorder: TaskActivityRecorder
   persistTask: NonNullable<TaskActionDeps['persistTask']>
@@ -1433,6 +1436,37 @@ export function buildCommandHandlers(ctx: CommandContext): CommandHandlerMap {
       const patch = autoExtractSettingsSchema.partial().parse(payload)
       const result = await settingsManager.saveAutoExtractSettings(patch)
       return { ok: true, settings: result.settings }
+    },
+
+    [Commands.OpenCrashReportIssue]: async (payload: unknown) => {
+      const parsed = crashReportRequestSchema.parse(payload)
+      const err = parsed?.error
+        ? Object.assign(new Error(parsed.error.message), {
+            name: parsed.error.name ?? 'Error',
+            stack: parsed.error.stack,
+          })
+        : undefined
+      const url = ctx.crashReporter
+        ? ctx.crashReporter.getGitHubIssueUrl(
+            err,
+            parsed?.context,
+            parsed?.userDescription
+          )
+        : 'https://github.com/agalwood/Motrix/issues/new'
+      await shell.openExternal(url)
+      return { ok: true, url }
+    },
+
+    [Commands.RecordClientCrash]: async (payload: unknown) => {
+      const parsed = crashReportRequestSchema.parse(payload)
+      if (parsed?.error && ctx.crashReporter) {
+        const err = Object.assign(new Error(parsed.error.message), {
+          name: parsed.error.name ?? 'Error',
+          stack: parsed.error.stack,
+        })
+        ctx.crashReporter.recordError(err, parsed.context ?? 'renderer:client')
+      }
+      return { ok: true }
     },
 
     [Commands.ExtractArchive]: async (payload: unknown) => {

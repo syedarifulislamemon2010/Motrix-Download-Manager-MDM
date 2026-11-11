@@ -1501,7 +1501,8 @@
         "website": "공식 웹사이트",
         "websiteDescription": "motrix.app 방문",
         "acknowledgments": "감사의 말",
-        "acknowledgmentsDescription": "motrix.app에서 프로젝트 기여자 확인"
+        "acknowledgmentsDescription": "motrix.app에서 프로젝트 기여자 확인",
+        "reportIssue": "Report an issue"
       }
     },
     "bittorrent": {
@@ -3495,7 +3496,8 @@
     "restored": "화면이 복원되었습니다",
     "wait": "계속 기다리기",
     "routeTitle": "이 페이지를 표시할 수 없습니다",
-    "submissionNotice": "이전 제출이 완료되었을 수 있습니다. 같은 작업을 다시 만들기 전에 다운로드를 확인하세요."
+    "submissionNotice": "이전 제출이 완료되었을 수 있습니다. 같은 작업을 다시 만들기 전에 다운로드를 확인하세요.",
+    "reportIssue": "Report on GitHub"
   },
   "pluginOperations": {
     "requiredField": "필수 항목",
@@ -3573,5 +3575,13 @@
     "invalidOptions": "목록마다 유효한 URL을 최대 {{limit}}개 입력할 수 있습니다. 비공개 토렌트에는 트래커가 필요합니다.",
     "menuLabel": "토렌트 파일 만들기…",
     "downloadRequested": "다운로드 요청됨: {{path}}"
+  },
+  "crashReport": {
+    "title": "Crash Report & Diagnostics",
+    "reportIssue": "Report on GitHub",
+    "copyDetails": "Copy crash report",
+    "detailsCopied": "Crash report copied to clipboard",
+    "description": "Pre-filled GitHub issue with scrubbed system details and error stack.",
+    "privacyNotice": "User directories and credentials have been scrubbed."
   }
 }

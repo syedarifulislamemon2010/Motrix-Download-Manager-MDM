@@ -1,5 +1,6 @@
 import path from 'node:path'
 import type { TaskActivityService } from '@core/activity'
+import type { CrashReporterService } from '@core/crash'
 import type { EngineAdapter } from '@core/engine/engine-adapter'
 import type { EngineSupervisor } from '@core/engine/engine-supervisor'
 import { createGetEngineTaskOptionsHandler } from '@core/engine/get-engine-task-options'
@@ -49,6 +50,7 @@ import type { SupportedLocale } from '@shared/constants/locales'
 import type { QueryHandlerMap } from '@shared/protocol/handler-types'
 import { Queries } from '@shared/protocol/queries'
 import { checkTaskFileExistsPayloadSchema } from '@shared/schemas/check-task-file'
+import { crashReportRequestSchema } from '@shared/schemas/crash-report'
 import { PluginLogRequestSchema } from '@shared/schemas/plugin-logs'
 import { ListServerDirectoryLocationsRequestSchema } from '@shared/schemas/server-directory'
 import { taskTrackerRequestSchema } from '@shared/schemas/task-tracker'
@@ -149,6 +151,7 @@ export interface ServerQueryContext {
   networkMonitor?: NetworkInterfaceMonitor
   mcpAuditLog?: McpAuditLog
   archiveService?: ArchiveService
+  crashReporter?: CrashReporterService
 }
 
 export function buildServerQueryHandlers(
@@ -322,6 +325,40 @@ export function buildServerQueryHandlers(
         available: Boolean(foundPath),
         executablePath: foundPath ?? null,
       }
+    },
+
+    [Queries.GetCrashReport]: async (payload: unknown) => {
+      const parsed = crashReportRequestSchema.parse(payload)
+      const err = parsed?.error
+        ? Object.assign(new Error(parsed.error.message), {
+            name: parsed.error.name ?? 'Error',
+            stack: parsed.error.stack,
+          })
+        : undefined
+      return ctx.crashReporter
+        ? ctx.crashReporter.buildReport(
+            err,
+            parsed?.context,
+            parsed?.userDescription
+          )
+        : null
+    },
+
+    [Queries.GetCrashReportUrl]: async (payload: unknown) => {
+      const parsed = crashReportRequestSchema.parse(payload)
+      const err = parsed?.error
+        ? Object.assign(new Error(parsed.error.message), {
+            name: parsed.error.name ?? 'Error',
+            stack: parsed.error.stack,
+          })
+        : undefined
+      return ctx.crashReporter
+        ? ctx.crashReporter.getGitHubIssueUrl(
+            err,
+            parsed?.context,
+            parsed?.userDescription
+          )
+        : 'https://github.com/agalwood/Motrix/issues/new'
     },
     // A remote server cannot read the browser user's operating-system accent.
     [Queries.GetSystemAccentColor]: async () => null,

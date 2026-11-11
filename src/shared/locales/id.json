@@ -1501,7 +1501,8 @@
         "website": "Situs resmi",
         "websiteDescription": "Kunjungi motrix.app",
         "acknowledgments": "Ucapan terima kasih",
-        "acknowledgmentsDescription": "Lihat kontributor dan pendukung proyek di motrix.app"
+        "acknowledgmentsDescription": "Lihat kontributor dan pendukung proyek di motrix.app",
+        "reportIssue": "Report an issue"
       }
     },
     "bittorrent": {
@@ -3495,7 +3496,8 @@
     "restored": "Antarmuka dipulihkan",
     "wait": "Terus menunggu",
     "routeTitle": "Halaman ini tidak dapat ditampilkan",
-    "submissionNotice": "Pengiriman sebelumnya mungkin telah selesai. Periksa unduhan sebelum membuat tugas yang sama lagi."
+    "submissionNotice": "Pengiriman sebelumnya mungkin telah selesai. Periksa unduhan sebelum membuat tugas yang sama lagi.",
+    "reportIssue": "Report on GitHub"
   },
   "pluginOperations": {
     "requiredField": "Kolom wajib diisi",
@@ -3573,5 +3575,13 @@
     "invalidOptions": "Maksimal {{limit}} URL valid per daftar. Torrent privat memerlukan pelacak.",
     "menuLabel": "Buat berkas torrent…",
     "downloadRequested": "Unduhan diminta: {{path}}"
+  },
+  "crashReport": {
+    "title": "Crash Report & Diagnostics",
+    "reportIssue": "Report on GitHub",
+    "copyDetails": "Copy crash report",
+    "detailsCopied": "Crash report copied to clipboard",
+    "description": "Pre-filled GitHub issue with scrubbed system details and error stack.",
+    "privacyNotice": "User directories and credentials have been scrubbed."
   }
 }

@@ -3282,3 +3282,44 @@ describe('BT storage command contract', () => {
     })
   })
 })
+
+describe('Crash Report commands contract', () => {
+  it('opens issue via OpenCrashReportIssue and records error via RecordClientCrash', async () => {
+    const mockRecordError = vi.fn()
+    const mockGetGitHubIssueUrl = vi
+      .fn()
+      .mockReturnValue(
+        'https://github.com/agalwood/Motrix/issues/new?title=test'
+      )
+    const crashReporter = {
+      recordError: mockRecordError,
+      getGitHubIssueUrl: mockGetGitHubIssueUrl,
+    }
+    const handlers = buildCommandHandlers({
+      ...fakeCtx(),
+      crashReporter,
+    } as unknown as CommandContext)
+
+    const recordResult = await handlers[Commands.RecordClientCrash]?.({
+      error: { message: 'Client UI error' },
+      context: 'renderer:test',
+    })
+    expect(recordResult).toEqual({ ok: true })
+    expect(mockRecordError).toHaveBeenCalledWith(
+      expect.objectContaining({ message: 'Client UI error' }),
+      'renderer:test'
+    )
+
+    const openResult = (await handlers[Commands.OpenCrashReportIssue]?.({
+      error: { message: 'Crash issue' },
+      context: 'test:context',
+    })) as { ok: boolean; url: string }
+    expect(openResult.ok).toBe(true)
+    expect(openResult.url).toBe(
+      'https://github.com/agalwood/Motrix/issues/new?title=test'
+    )
+    expect(openExternalMock).toHaveBeenCalledWith(
+      'https://github.com/agalwood/Motrix/issues/new?title=test'
+    )
+  })
+})
