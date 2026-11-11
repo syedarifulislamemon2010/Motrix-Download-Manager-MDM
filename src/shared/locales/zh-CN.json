@@ -1395,7 +1395,24 @@
       "menuBar": "菜单栏",
       "description": "主题、语言与显示",
       "systemTray": "系统托盘",
-      "followSystem": "跟随系统"
+      "followSystem": "跟随系统",
+      "themeManager": {
+        "sectionTitle": "自定义主题与预设",
+        "presetTitle": "主题预设",
+        "presetDesc": "选择精选主题预设或导入自定义主题。",
+        "defaultTheme": "Motrix 默认",
+        "presetsGroup": "预设主题",
+        "customGroup": "自定义主题",
+        "importButton": "导入主题",
+        "exportButton": "导出 JSON",
+        "exportBase16": "导出 Base16",
+        "resetButton": "恢复默认",
+        "contrastWarning": "提示：有 {{count}} 处颜色对比度偏低（低于 WCAG AA）",
+        "author": "作者",
+        "variant": "类型",
+        "importSuccess": "已成功导入主题「{{name}}」",
+        "importError": "导入失败：主题文件格式不正确"
+      }
     },
     "about": {
       "appIconAlt": "Motrix 应用图标",

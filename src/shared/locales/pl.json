@@ -1437,7 +1437,24 @@
       "menuBar": "Pasek menu",
       "description": "Motyw, język i wyświetlanie",
       "systemTray": "Zasobnik systemowy",
-      "followSystem": "Zgodnie z systemem"
+      "followSystem": "Zgodnie z systemem",
+      "themeManager": {
+        "sectionTitle": "Custom Themes & Presets",
+        "presetTitle": "Theme Preset",
+        "presetDesc": "Select a curated theme preset or imported custom theme.",
+        "defaultTheme": "Motrix Default",
+        "presetsGroup": "Presets",
+        "customGroup": "Custom Themes",
+        "importButton": "Import Theme",
+        "exportButton": "Export JSON",
+        "exportBase16": "Export Base16",
+        "resetButton": "Reset to Default",
+        "contrastWarning": "Warning: {{count}} color pairs have low contrast ratio (WCAG AA)",
+        "author": "Author",
+        "variant": "Variant",
+        "importSuccess": "Theme \"{{name}}\" imported successfully",
+        "importError": "Failed to import theme: invalid theme file"
+      }
     },
     "advanced": {
       "rpc": {

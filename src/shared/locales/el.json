@@ -1934,7 +1934,24 @@
       "taskbarProgressDesc": "Εμφάνιση της συνολικής προόδου των ενεργών λήψεων στο κουμπί του κύριου παραθύρου στη γραμμή εργασιών.",
       "dockProgress": "Εμφάνιση προόδου λήψεων στο Dock",
       "dockProgressDesc": "Εμφάνιση της συνολικής προόδου των ενεργών λήψεων στο εικονίδιο του Dock.",
-      "traySpeedometerDesc": "Εμφανίζει τις ταχύτητες λήψης και αποστολής δίπλα στο εικονίδιο της εφαρμογής."
+      "traySpeedometerDesc": "Εμφανίζει τις ταχύτητες λήψης και αποστολής δίπλα στο εικονίδιο της εφαρμογής.",
+      "themeManager": {
+        "sectionTitle": "Custom Themes & Presets",
+        "presetTitle": "Theme Preset",
+        "presetDesc": "Select a curated theme preset or imported custom theme.",
+        "defaultTheme": "Motrix Default",
+        "presetsGroup": "Presets",
+        "customGroup": "Custom Themes",
+        "importButton": "Import Theme",
+        "exportButton": "Export JSON",
+        "exportBase16": "Export Base16",
+        "resetButton": "Reset to Default",
+        "contrastWarning": "Warning: {{count}} color pairs have low contrast ratio (WCAG AA)",
+        "author": "Author",
+        "variant": "Variant",
+        "importSuccess": "Theme \"{{name}}\" imported successfully",
+        "importError": "Failed to import theme: invalid theme file"
+      }
     },
     "bittorrent": {
       "description": "Magnet, διαμοιρασμός και trackers",

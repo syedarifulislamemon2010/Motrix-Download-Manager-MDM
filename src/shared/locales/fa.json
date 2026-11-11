@@ -1934,7 +1934,24 @@
       "taskbarProgressDesc": "نمایش پیشرفت کلی دانلودهای فعال روی دکمهٔ پنجرهٔ اصلی در نوار وظیفه.",
       "dockProgress": "نمایش پیشرفت دانلود در Dock",
       "dockProgressDesc": "نمایش پیشرفت کلی دانلودهای فعال روی نماد Dock.",
-      "traySpeedometerDesc": "سرعت دانلود و بارگذاری کنار آیکون برنامه نمایش داده شود."
+      "traySpeedometerDesc": "سرعت دانلود و بارگذاری کنار آیکون برنامه نمایش داده شود.",
+      "themeManager": {
+        "sectionTitle": "Custom Themes & Presets",
+        "presetTitle": "Theme Preset",
+        "presetDesc": "Select a curated theme preset or imported custom theme.",
+        "defaultTheme": "Motrix Default",
+        "presetsGroup": "Presets",
+        "customGroup": "Custom Themes",
+        "importButton": "Import Theme",
+        "exportButton": "Export JSON",
+        "exportBase16": "Export Base16",
+        "resetButton": "Reset to Default",
+        "contrastWarning": "Warning: {{count}} color pairs have low contrast ratio (WCAG AA)",
+        "author": "Author",
+        "variant": "Variant",
+        "importSuccess": "Theme \"{{name}}\" imported successfully",
+        "importError": "Failed to import theme: invalid theme file"
+      }
     },
     "bittorrent": {
       "description": "پیوندهای magnet، توزیع و ردیاب‌ها",

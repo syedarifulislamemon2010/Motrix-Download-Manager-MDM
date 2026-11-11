@@ -1953,7 +1953,24 @@
       "dockProgress": "Afficher la progression des téléchargements dans le Dock",
       "dockProgressDesc": "Affiche la progression globale des téléchargements actifs sur l’icône du Dock.",
       "traySpeedometerDesc": "Afficher les débits de réception et d’envoi à côté de l’icône de l’application.",
-      "followSystem": "Suivre le système"
+      "followSystem": "Suivre le système",
+      "themeManager": {
+        "sectionTitle": "Custom Themes & Presets",
+        "presetTitle": "Theme Preset",
+        "presetDesc": "Select a curated theme preset or imported custom theme.",
+        "defaultTheme": "Motrix Default",
+        "presetsGroup": "Presets",
+        "customGroup": "Custom Themes",
+        "importButton": "Import Theme",
+        "exportButton": "Export JSON",
+        "exportBase16": "Export Base16",
+        "resetButton": "Reset to Default",
+        "contrastWarning": "Warning: {{count}} color pairs have low contrast ratio (WCAG AA)",
+        "author": "Author",
+        "variant": "Variant",
+        "importSuccess": "Theme \"{{name}}\" imported successfully",
+        "importError": "Failed to import theme: invalid theme file"
+      }
     },
     "bittorrent": {
       "description": "Liens magnet, partage et trackers",

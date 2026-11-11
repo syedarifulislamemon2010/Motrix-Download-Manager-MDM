@@ -1395,7 +1395,24 @@
       "menuBar": "選單列",
       "description": "主題、語言與顯示",
       "systemTray": "系統匣",
-      "followSystem": "跟隨系統"
+      "followSystem": "跟隨系統",
+      "themeManager": {
+        "sectionTitle": "自訂主題與預設",
+        "presetTitle": "主題預設",
+        "presetDesc": "選取精選主題預設或匯入自訂主題。",
+        "defaultTheme": "Motrix 預設",
+        "presetsGroup": "預設主題",
+        "customGroup": "自訂主題",
+        "importButton": "匯入主題",
+        "exportButton": "匯出 JSON",
+        "exportBase16": "匯出 Base16",
+        "resetButton": "還原預設",
+        "contrastWarning": "提示：有 {{count}} 處顏色對比度偏低（低於 WCAG AA）",
+        "author": "作者",
+        "variant": "類型",
+        "importSuccess": "已成功匯入主題「{{name}}」",
+        "importError": "匯入失敗：主題檔案格式無效"
+      }
     },
     "advanced": {
       "rpc": {

@@ -4,6 +4,7 @@ import {
 } from '@renderer/lib/settings-refresh'
 import { transport } from '@renderer/lib/transport'
 import { fnosSdk, isFnos, watchFnosPlatform } from '@renderer/platform/fnos'
+import { useThemeManager } from '@renderer/themes/theme-manager'
 import { Queries } from '@shared/protocol/queries'
 import type { AppSettings } from '@shared/types/settings'
 import { useTheme } from 'next-themes'
@@ -13,6 +14,13 @@ import { useEffect } from 'react'
 // the browser event connection is unavailable.
 export function ThemeSync() {
   const { setTheme } = useTheme()
+  const activeTheme = useThemeManager((s) => s.getActiveTheme())
+
+  useEffect(() => {
+    if (activeTheme) {
+      setTheme(activeTheme.variant)
+    }
+  }, [activeTheme, setTheme])
 
   useEffect(() => {
     let cancelled = false
@@ -25,12 +33,14 @@ export function ThemeSync() {
       if (cancelled || current !== generation) return
       const all = data as AppSettings | undefined
       const theme = all?.app?.theme
-      if (theme === 'system' && isFnos()) {
-        const config = await (await fnosSdk()).getPlatformConfig()
-        if (!cancelled && current === generation) setTheme(config.theme)
-        return
+      if (!useThemeManager.getState().getActiveTheme()) {
+        if (theme === 'system' && isFnos()) {
+          const config = await (await fnosSdk()).getPlatformConfig()
+          if (!cancelled && current === generation) setTheme(config.theme)
+          return
+        }
+        if (theme) setTheme(theme)
       }
-      if (theme) setTheme(theme)
     }
     const refresh = () => void reconcile().catch(() => {})
     const stopFnosSync = watchFnosPlatform('os/theme', refresh)

@@ -56,6 +56,7 @@ import { useTranslation } from 'react-i18next'
 import type { SettingsCardDialogProps } from './card-types'
 import { appearanceFormSchema } from './settings-form-schemas'
 import { SidebarColorPicker } from './sidebar-color-picker'
+import { ThemeManagerSection } from './theme-manager-section'
 
 type AppearanceFields = Pick<
   MotrixAppSettings,
@@ -579,6 +580,11 @@ export function AppearanceDialog({
                         )}
                       />
                     )}
+                    <Separator className="my-4" />
+                    <h3 className="text-sm font-semibold">
+                      {t('settings.appearance.themeManager.sectionTitle')}
+                    </h3>
+                    <ThemeManagerSection />
                   </fieldset>
                 </form>
               </Form>

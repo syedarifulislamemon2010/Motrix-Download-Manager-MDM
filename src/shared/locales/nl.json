@@ -1934,7 +1934,24 @@
       "taskbarProgressDesc": "Toon de gezamenlijke voortgang van actieve downloads op de taakbalkknop van het hoofdvenster.",
       "dockProgress": "Downloadvoortgang in Dock tonen",
       "dockProgressDesc": "Toon de gezamenlijke voortgang van actieve downloads op het Dock-symbool.",
-      "traySpeedometerDesc": "Download- en uploadsnelheden naast het apppictogram tonen."
+      "traySpeedometerDesc": "Download- en uploadsnelheden naast het apppictogram tonen.",
+      "themeManager": {
+        "sectionTitle": "Custom Themes & Presets",
+        "presetTitle": "Theme Preset",
+        "presetDesc": "Select a curated theme preset or imported custom theme.",
+        "defaultTheme": "Motrix Default",
+        "presetsGroup": "Presets",
+        "customGroup": "Custom Themes",
+        "importButton": "Import Theme",
+        "exportButton": "Export JSON",
+        "exportBase16": "Export Base16",
+        "resetButton": "Reset to Default",
+        "contrastWarning": "Warning: {{count}} color pairs have low contrast ratio (WCAG AA)",
+        "author": "Author",
+        "variant": "Variant",
+        "importSuccess": "Theme \"{{name}}\" imported successfully",
+        "importError": "Failed to import theme: invalid theme file"
+      }
     },
     "bittorrent": {
       "description": "Magnetlinks, seeden en trackers",

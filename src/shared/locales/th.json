@@ -1915,7 +1915,24 @@
       "taskbarProgressDesc": "แสดงความคืบหน้ารวมของการดาวน์โหลดที่กำลังทำงานบนปุ่มหน้าต่างหลักในแถบงาน",
       "dockProgress": "แสดงความคืบหน้าการดาวน์โหลดใน Dock",
       "dockProgressDesc": "แสดงความคืบหน้ารวมของการดาวน์โหลดที่กำลังทำงานบนไอคอน Dock",
-      "traySpeedometerDesc": "ดูความเร็วดาวน์โหลดและอัปโหลดข้างไอคอนแอป"
+      "traySpeedometerDesc": "ดูความเร็วดาวน์โหลดและอัปโหลดข้างไอคอนแอป",
+      "themeManager": {
+        "sectionTitle": "Custom Themes & Presets",
+        "presetTitle": "Theme Preset",
+        "presetDesc": "Select a curated theme preset or imported custom theme.",
+        "defaultTheme": "Motrix Default",
+        "presetsGroup": "Presets",
+        "customGroup": "Custom Themes",
+        "importButton": "Import Theme",
+        "exportButton": "Export JSON",
+        "exportBase16": "Export Base16",
+        "resetButton": "Reset to Default",
+        "contrastWarning": "Warning: {{count}} color pairs have low contrast ratio (WCAG AA)",
+        "author": "Author",
+        "variant": "Variant",
+        "importSuccess": "Theme \"{{name}}\" imported successfully",
+        "importError": "Failed to import theme: invalid theme file"
+      }
     },
     "bittorrent": {
       "description": "แมกเน็ต การปล่อยไฟล์ และแทร็กเกอร์",
