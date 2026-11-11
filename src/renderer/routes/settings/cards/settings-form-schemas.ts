@@ -1,6 +1,7 @@
 import { appSettingsInputSchema } from '@shared/schemas/app-settings'
 import { engineSettingsInputSchema } from '@shared/schemas/engine-settings'
 import { geoIpSettingsInputSchema } from '@shared/schemas/geoip-settings'
+import { helperToolsSettingsInputSchema } from '@shared/schemas/helper-tools-settings'
 import { mcpSettingsInputSchema } from '@shared/schemas/mcp-settings'
 import { mediaSettingsInputSchema } from '@shared/schemas/media-settings'
 import { natSettingsInputSchema } from '@shared/schemas/nat-settings'
@@ -86,4 +87,5 @@ export const integrationFormSchema = z.object({
   }),
   media: mediaSettingsInputSchema,
   mcp: mcpSettingsInputSchema.optional(),
+  helperTools: helperToolsSettingsInputSchema.optional(),
 })

@@ -31,6 +31,7 @@ import { saveSettings } from '@renderer/lib/settings-save'
 import { transport } from '@renderer/lib/transport'
 import {
   DEFAULT_APP_SETTINGS,
+  DEFAULT_HELPER_TOOLS_SETTINGS,
   DEFAULT_MCP_SETTINGS,
   DEFAULT_MEDIA_SETTINGS,
 } from '@shared/schemas'
@@ -48,6 +49,7 @@ import { BrowserExtensionsSection } from './browser-extensions-section'
 import { CLIClientsSection } from './cli-clients-section'
 import { CliToolSection } from './cli-tool-section'
 import { ClientPairingSwitch } from './client-pairing-switch'
+import { HelperToolsSection } from './helper-tools-section'
 import { McpSection } from './mcp-section'
 import { MediaToolsSection } from './media-tools-section'
 import { PendingApprovalsSection } from './pending-approvals-section'
@@ -62,6 +64,7 @@ const DEFAULTS: IntegrationFormValues = {
   },
   media: { ...DEFAULT_MEDIA_SETTINGS },
   mcp: { ...DEFAULT_MCP_SETTINGS },
+  helperTools: { ...DEFAULT_HELPER_TOOLS_SETTINGS },
 }
 
 export function IntegrationDialog({
@@ -97,6 +100,9 @@ export function IntegrationDialog({
         },
         media: { ...all.media },
         mcp: all.mcp ? { ...all.mcp } : { ...DEFAULT_MCP_SETTINGS },
+        helperTools: all.helperTools
+          ? { ...all.helperTools }
+          : { ...DEFAULT_HELPER_TOOLS_SETTINGS },
       })
     }
   })
@@ -109,6 +115,7 @@ export function IntegrationDialog({
           app: Partial<IntegrationFormValues['app']>
           media: Partial<IntegrationFormValues['media']>
           mcp: Partial<IntegrationFormValues['mcp']>
+          helperTools: Partial<IntegrationFormValues['helperTools']>
         }>
       | undefined
     if (!dirty) {
@@ -273,6 +280,21 @@ export function IntegrationDialog({
                       {t('settings.integration.media.title')}
                     </h3>
                     <MediaToolsSection />
+                  </section>
+
+                  <Separator />
+
+                  <section
+                    aria-labelledby="integration-helper-tools"
+                    className="flex flex-col gap-3"
+                  >
+                    <h3
+                      id="integration-helper-tools"
+                      className="text-sm font-semibold text-foreground"
+                    >
+                      {t('settings.integration.helperTools.title')}
+                    </h3>
+                    <HelperToolsSection />
                   </section>
 
                   <Separator />

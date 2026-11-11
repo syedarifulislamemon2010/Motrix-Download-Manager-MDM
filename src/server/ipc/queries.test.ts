@@ -864,4 +864,23 @@ describe('server FFmpeg detection refresh', () => {
     await missing[Queries.GetFfmpegDetection]?.()
     expect(ffmpeg.available).toBe(false)
   })
+
+  it('queries server helper binary install status and detection', async () => {
+    const handlers = buildServerQueryHandlers(
+      makeCtx() as unknown as ServerQueryContext
+    )
+    const status = await handlers[Queries.GetHelperBinaryInstallStatus]?.({
+      id: 'gallery-dl',
+    })
+    expect(status).toMatchObject({
+      id: 'gallery-dl',
+      phase: 'idle',
+    })
+
+    const detection = (await handlers[Queries.GetHelperBinaryDetection]?.({
+      id: 'gallery-dl',
+    })) as { id: string; active: unknown; candidates: unknown[] }
+    expect(detection.id).toBe('gallery-dl')
+    expect(detection.active).toBeNull()
+  })
 })

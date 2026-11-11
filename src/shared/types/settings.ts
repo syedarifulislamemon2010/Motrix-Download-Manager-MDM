@@ -3,6 +3,7 @@ import type {
   NotificationBadgeStyle,
 } from '@shared/schemas/app-settings'
 import type { AutoExtractSettings } from '@shared/schemas/auto-extract-settings'
+import type { HelperToolsSettings } from '@shared/schemas/helper-tools-settings'
 import type { ByteUnitPreference } from '@shared/schemas/byte-unit-system'
 import type { SidebarColor } from '@shared/schemas/sidebar-color'
 import type { SpeedLimitUnits } from '@shared/schemas/speed-limit-units'
@@ -164,6 +165,7 @@ export interface AppSettings {
   network: NetworkSettings
   mcp: McpSettings
   autoExtract: AutoExtractSettings
+  helperTools: HelperToolsSettings
   bridge: BridgeSettings
   windowState: Record<string, WindowState>
 }

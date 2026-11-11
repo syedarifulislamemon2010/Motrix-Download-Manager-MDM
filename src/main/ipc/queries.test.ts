@@ -974,4 +974,32 @@ describe('CheckTaskFileExists query', () => {
       undefined
     )
   })
+
+  it('queries helper binary install status and detection', async () => {
+    const handlers = buildQueryHandlers({
+      userDataDir: '/test-user-dir',
+      settingsManager: {
+        getHelperTools: () => ({
+          ytDlpBinaryPath: '',
+          galleryDlBinaryPath: '',
+          denoBinaryPath: '',
+        }),
+      },
+    } as unknown as QueryContext)
+
+    const status = await handlers[Queries.GetHelperBinaryInstallStatus]?.({
+      id: 'yt-dlp',
+    })
+    expect(status).toMatchObject({
+      id: 'yt-dlp',
+      phase: 'idle',
+    })
+
+    const detection = (await handlers[Queries.GetHelperBinaryDetection]?.({
+      id: 'yt-dlp',
+    })) as { id: string; active: unknown; candidates: unknown[] }
+    expect(detection.id).toBe('yt-dlp')
+    expect(detection.active).toBeNull()
+    expect(detection.candidates).toHaveLength(4)
+  })
 })

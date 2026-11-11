@@ -2312,6 +2312,24 @@
         "clientConfigTitle": "AI Client Configuration (Claude Desktop, Cursor)",
         "auditTitle": "Recent MCP Activity",
         "auditEmpty": "No MCP activity recorded yet."
+      },
+      "helperTools": {
+        "title": "Helper Tools",
+        "description": "Verified external binaries for media and gallery extraction.",
+        "ytdlpDesc": "Video and audio extraction engine for thousands of streaming sites.",
+        "gallerydlDesc": "Image gallery downloader for image boards, manga, and photo albums.",
+        "denoDesc": "Modern, secure JavaScript and TypeScript runtime for extension scripts.",
+        "install": "Install",
+        "update": "Update",
+        "refresh": "Refresh detection",
+        "notInstalled": "Not Installed",
+        "path": "Path",
+        "downloading": "Downloading...",
+        "verifying": "Verifying SHA-256...",
+        "extracting": "Extracting...",
+        "customPathToggle": "Custom Path",
+        "customPathLabel": "Custom {{name}} binary path",
+        "customPathPlaceholder": "Path to custom {{name}} executable"
       }
     },
     "validation": {

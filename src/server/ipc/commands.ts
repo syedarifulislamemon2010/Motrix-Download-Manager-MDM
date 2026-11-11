@@ -7,6 +7,7 @@ import type { EngineSupervisor } from '@core/engine/engine-supervisor'
 import { ENGINE_READY_TIMEOUT_MS } from '@core/engine/engine-supervisor'
 import type { EventBus } from '@core/events/event-bus'
 import type { ArchiveService } from '@core/extract'
+import { installVerifiedHelperBinary } from '@core/helper-binaries/verified-installer'
 import type { GeoIPManager } from '@core/geoip/geo-ip-manager'
 import { createUpdateGeoIPDatabaseHandler } from '@core/geoip/update-geo-ip-database'
 import { getLogger } from '@core/logger'
@@ -101,6 +102,7 @@ import {
   taskIdsPayloadSchema,
 } from '@shared/schemas/bulk-task-command'
 import { crashReportRequestSchema } from '@shared/schemas/crash-report'
+import { helperBinaryIdSchema } from '@shared/schemas/helper-binary'
 import { languagePreferenceSchema } from '@shared/schemas/locale'
 import { mcpSettingsSchema } from '@shared/schemas/mcp-settings'
 import { moveTasksPayloadSchema } from '@shared/schemas/move-tasks'
@@ -526,6 +528,17 @@ export function buildServerCommandHandlers(
         }
         return result
       }
+      return ctx.trackAsyncWork ? ctx.trackAsyncWork(operation) : operation()
+    },
+    [Commands.InstallHelperBinary]: async (payload: unknown) => {
+      const { id } = z.object({ id: helperBinaryIdSchema }).parse(payload)
+      const operation = () =>
+        installVerifiedHelperBinary({
+          id,
+          userDataDir: ctx.userDataDir,
+          onStatus: (status) =>
+            eventBus.emit(Events.HelperBinaryInstallStatusChanged, status),
+        })
       return ctx.trackAsyncWork ? ctx.trackAsyncWork(operation) : operation()
     },
     [Commands.CreateServerDirectory]: async (request: unknown) =>

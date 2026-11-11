@@ -91,6 +91,7 @@ export const Events = {
   GeoIPUpdateProgress: 'event:geoipUpdateProgress',
   GeoIPStatusChanged: 'event:geoipStatusChanged',
   FfmpegInstallStatusChanged: 'event:ffmpegInstallStatusChanged',
+  HelperBinaryInstallStatusChanged: 'event:helperBinaryInstallStatusChanged',
   // Plugin config
   PluginConfigChanged: 'event:pluginConfigChanged',
   // Spec §I30 — optional-permission grants mutated; payload is `{pluginId}`.

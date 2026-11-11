@@ -14,6 +14,11 @@ import {
   autoExtractSettingsSchema,
   DEFAULT_AUTO_EXTRACT_SETTINGS,
 } from '@shared/schemas/auto-extract-settings'
+import {
+  type HelperToolsSettings,
+  helperToolsSettingsSchema,
+  DEFAULT_HELPER_TOOLS_SETTINGS,
+} from '@shared/schemas/helper-tools-settings'
 import type { BridgeSettings } from '@shared/schemas/bridge-settings'
 import {
   bridgeSettingsSchema,
@@ -88,6 +93,7 @@ import {
   validateAutoExtractSettings,
   validateDashboardLayoutSettings,
   validateEngineSettings,
+  validateHelperToolsSettings,
   validateMcpSettings,
   validateNatSettings,
   validateNetworkSettings,
@@ -172,6 +178,7 @@ function createDefaultSettings(
     network: { ...DEFAULT_NETWORK_SETTINGS },
     mcp: { ...DEFAULT_MCP_SETTINGS },
     autoExtract: { ...DEFAULT_AUTO_EXTRACT_SETTINGS },
+    helperTools: { ...DEFAULT_HELPER_TOOLS_SETTINGS },
     // Fresh install: mint a real, durable instance id now rather than
     // persisting the '' sentinel. Unlike rpcSecret/defaultSaveDir (seeded
     // later by seedSentinels using instance-scoped defaults), the UUID
@@ -810,6 +817,14 @@ export class SettingsManager {
       })
     }
 
+    // Merge helperTools settings
+    if (partial.helperTools) {
+      next.helperTools = validateHelperToolsSettings({
+        ...next.helperTools,
+        ...partial.helperTools,
+      })
+    }
+
     // Merge plugins
     if (partial.plugins !== undefined) {
       next.plugins = {
@@ -885,6 +900,9 @@ export class SettingsManager {
       autoExtract: autoExtractSettingsSchema.parse(
         (raw.autoExtract ?? {}) as AutoExtractSettings
       ),
+      helperTools: helperToolsSettingsSchema.parse(
+        (raw.helperTools ?? {}) as HelperToolsSettings
+      ),
       windowState: windowStateSchema.parse(raw.windowState ?? {}),
     }
   }
@@ -899,6 +917,30 @@ export class SettingsManager {
 
   getAutoExtract(): AutoExtractSettings {
     return this.settings.autoExtract ?? DEFAULT_AUTO_EXTRACT_SETTINGS
+  }
+
+  getHelperTools(): HelperToolsSettings {
+    return this.settings.helperTools ?? DEFAULT_HELPER_TOOLS_SETTINGS
+  }
+
+  async saveHelperToolsSettings(patch: Partial<HelperToolsSettings>): Promise<{
+    ok: boolean
+    settings: HelperToolsSettings
+  }> {
+    return this.enqueueMutation(async () => {
+      const old = structuredClone(this.settings)
+      const next = structuredClone(this.settings)
+      const nextHelperTools = validateHelperToolsSettings({
+        ...old.helperTools,
+        ...patch,
+      })
+      next.helperTools = nextHelperTools
+      if (JSON.stringify(old.helperTools) !== JSON.stringify(nextHelperTools)) {
+        await this.saveSettings(next)
+        this.commitSettings(old, next)
+      }
+      return { ok: true, settings: next.helperTools }
+    })
   }
 
   async saveAutoExtractSettings(patch: Partial<AutoExtractSettings>): Promise<{

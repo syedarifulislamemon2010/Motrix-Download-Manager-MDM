@@ -87,6 +87,8 @@ export const Queries = {
   // Consumed by the Media settings card to render the 4-row status table.
   GetFfmpegDetection: 'query:getFfmpegDetection',
   GetFfmpegInstallStatus: 'query:getFfmpegInstallStatus',
+  GetHelperBinaryDetection: 'query:getHelperBinaryDetection',
+  GetHelperBinaryInstallStatus: 'query:getHelperBinaryInstallStatus',
   // Dashboard
   GetSpeedHistory: 'query:getSpeedHistory',
   GetTransferStats: 'query:getTransferStats',

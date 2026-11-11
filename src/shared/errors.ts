@@ -85,6 +85,9 @@ export enum ErrorCode {
   FfmpegInstallBusy = 'FFMPEG_INSTALL_BUSY',
   FfmpegInstallFailed = 'FFMPEG_INSTALL_FAILED',
   FfmpegReleaseUnavailable = 'FFMPEG_RELEASE_UNAVAILABLE',
+  HelperBinaryInstallBusy = 'HELPER_BINARY_INSTALL_BUSY',
+  HelperBinaryInstallFailed = 'HELPER_BINARY_INSTALL_FAILED',
+  HelperBinaryReleaseUnavailable = 'HELPER_BINARY_RELEASE_UNAVAILABLE',
 }
 
 export enum DownloadErrorCode {

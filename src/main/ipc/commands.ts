@@ -10,6 +10,7 @@ import type { EngineSupervisor } from '@core/engine/engine-supervisor'
 import { ENGINE_READY_TIMEOUT_MS } from '@core/engine/engine-supervisor'
 import type { EventBus } from '@core/events/event-bus'
 import type { ArchiveService } from '@core/extract'
+import { installVerifiedHelperBinary } from '@core/helper-binaries/verified-installer'
 import type { GeoIPManager } from '@core/geoip/geo-ip-manager'
 import { createUpdateGeoIPDatabaseHandler } from '@core/geoip/update-geo-ip-database'
 import { getLogger } from '@core/logger'
@@ -132,6 +133,7 @@ import {
 import { closeCurrentWindowSchema } from '@shared/schemas/close-current-window'
 import { crashReportRequestSchema } from '@shared/schemas/crash-report'
 import { filePickerOptionsSchema } from '@shared/schemas/file-picker'
+import { helperBinaryIdSchema } from '@shared/schemas/helper-binary'
 import { mcpSettingsSchema } from '@shared/schemas/mcp-settings'
 import { moveTasksPayloadSchema } from '@shared/schemas/move-tasks'
 import { networkSettingsSchema } from '@shared/schemas/network-settings'
@@ -797,6 +799,18 @@ export function buildCommandHandlers(ctx: CommandContext): CommandHandlerMap {
         installManagedFfmpeg(userDataDir, (status) =>
           ctx.eventBus.emit(Events.FfmpegInstallStatusChanged, status)
         )
+      return ctx.trackAsyncWork ? ctx.trackAsyncWork(operation) : operation()
+    },
+
+    [Commands.InstallHelperBinary]: async (payload: unknown) => {
+      const { id } = z.object({ id: helperBinaryIdSchema }).parse(payload)
+      const operation = () =>
+        installVerifiedHelperBinary({
+          id,
+          userDataDir,
+          onStatus: (status) =>
+            ctx.eventBus.emit(Events.HelperBinaryInstallStatusChanged, status),
+        })
       return ctx.trackAsyncWork ? ctx.trackAsyncWork(operation) : operation()
     },
 

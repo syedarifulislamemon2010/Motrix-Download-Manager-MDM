@@ -169,6 +169,7 @@ export const Commands = {
   ClearNotifications: 'command:clearNotifications',
   InstallCliTool: 'command:installCliTool',
   InstallFfmpeg: 'command:installFfmpeg',
+  InstallHelperBinary: 'command:installHelperBinary',
 } as const
 
 export type CommandChannel = (typeof Commands)[keyof typeof Commands]

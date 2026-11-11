@@ -1,5 +1,6 @@
 import { appSettingsSchema } from '@shared/schemas/app-settings'
 import { autoExtractSettingsSchema } from '@shared/schemas/auto-extract-settings'
+import { helperToolsSettingsSchema } from '@shared/schemas/helper-tools-settings'
 import { dashboardLayoutSettingsSchema } from '@shared/schemas/dashboard-layout'
 import { engineSettingsSchema } from '@shared/schemas/engine-settings'
 import { mcpSettingsSchema } from '@shared/schemas/mcp-settings'
@@ -33,6 +34,11 @@ export {
   autoExtractSettingsSchema,
   DEFAULT_AUTO_EXTRACT_SETTINGS,
 } from '@shared/schemas/auto-extract-settings'
+export {
+  type HelperToolsSettings,
+  helperToolsSettingsSchema,
+  DEFAULT_HELPER_TOOLS_SETTINGS,
+} from '@shared/schemas/helper-tools-settings'
 export {
   DASHBOARD_COLUMNS,
   DEFAULT_DASHBOARD_LAYOUT,
@@ -124,6 +130,12 @@ export function validateAutoExtractSettings(
   input: unknown
 ): import('@shared/schemas/auto-extract-settings').AutoExtractSettings {
   return autoExtractSettingsSchema.parse(input)
+}
+
+export function validateHelperToolsSettings(
+  input: unknown
+): import('@shared/schemas/helper-tools-settings').HelperToolsSettings {
+  return helperToolsSettingsSchema.parse(input)
 }
 
 export function validateDashboardLayoutSettings(

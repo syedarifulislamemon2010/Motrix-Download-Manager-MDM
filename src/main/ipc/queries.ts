@@ -1,4 +1,5 @@
 import path from 'node:path'
+import { z } from 'zod'
 import type { TaskActivityService } from '@core/activity'
 import type { CrashReporterService } from '@core/crash'
 import type { EngineAdapter } from '@core/engine/engine-adapter'
@@ -6,6 +7,8 @@ import type { EngineSupervisor } from '@core/engine/engine-supervisor'
 import { getTuningRecommendation } from '@core/engine/get-tuning-recommendation'
 import { type ArchiveService, SevenZipDetector } from '@core/extract'
 import { getFfmpegInstallStatus } from '@core/ffmpeg/verified-install'
+import { locateHelperBinary } from '@core/helper-binaries/binary-locator'
+import { getHelperBinaryInstallStatus } from '@core/helper-binaries/verified-installer'
 import { pathExists } from '@core/fs/path-exists'
 import type { GeoIPManager } from '@core/geoip/geo-ip-manager'
 import { createGetGeoIPStatusHandler } from '@core/geoip/get-geo-ip-status'
@@ -54,6 +57,10 @@ import type { QueryHandlerMap } from '@shared/protocol/handler-types'
 import { Queries } from '@shared/protocol/queries'
 import { checkTaskFileExistsPayloadSchema } from '@shared/schemas/check-task-file'
 import { crashReportRequestSchema } from '@shared/schemas/crash-report'
+import {
+  HELPER_BINARY_IDS,
+  helperBinaryIdSchema,
+} from '@shared/schemas/helper-binary'
 import { PluginLogRequestSchema } from '@shared/schemas/plugin-logs'
 import { parseTaskInspectorActivitySnapshot } from '@shared/schemas/task-inspector-activity'
 import { taskTrackerRequestSchema } from '@shared/schemas/task-tracker'
@@ -368,6 +375,39 @@ export function buildQueryHandlers(ctx: QueryContext): QueryHandlerMap {
 
     [Queries.GetFfmpegDetection]: async () =>
       capabilityHost.ffmpeg.refreshDetection(detectFfmpeg),
+
+    [Queries.GetHelperBinaryInstallStatus]: async (payload: unknown) => {
+      const { id } = z.object({ id: helperBinaryIdSchema }).parse(payload)
+      return getHelperBinaryInstallStatus(userDataDir, id)
+    },
+
+    [Queries.GetHelperBinaryDetection]: async (payload: unknown) => {
+      const parsed = z
+        .object({ id: helperBinaryIdSchema.optional() })
+        .catch({ id: undefined })
+        .parse(payload)
+      const settings = settingsManager.getHelperTools?.() ?? {
+        ytDlpBinaryPath: '',
+        galleryDlBinaryPath: '',
+        denoBinaryPath: '',
+      }
+      const targetIds = parsed.id ? [parsed.id] : HELPER_BINARY_IDS
+      const results = await Promise.all(
+        targetIds.map((tid) => {
+          const manualPath =
+            tid === 'yt-dlp'
+              ? settings.ytDlpBinaryPath
+              : tid === 'gallery-dl'
+                ? settings.galleryDlBinaryPath
+                : settings.denoBinaryPath
+          return locateHelperBinary(tid, {
+            manualPath,
+            userDataDir,
+          })
+        })
+      )
+      return parsed.id ? results[0] : results
+    },
 
     [Queries.GetTaskBtTracker]: createGetTaskBtTrackerHandler({
       engineAdapter,

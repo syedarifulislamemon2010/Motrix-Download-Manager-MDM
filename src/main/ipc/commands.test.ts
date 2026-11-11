@@ -3322,4 +3322,13 @@ describe('Crash Report commands contract', () => {
       'https://github.com/agalwood/Motrix/issues/new?title=test'
     )
   })
+
+  it('validates helper binary payload in Commands.InstallHelperBinary', async () => {
+    const ctx = fakeCtx()
+    const handlers = buildCommandHandlers(ctx as unknown as CommandContext)
+
+    await expect(
+      handlers[Commands.InstallHelperBinary]?.({ id: 'invalid-id' })
+    ).rejects.toThrow()
+  })
 })

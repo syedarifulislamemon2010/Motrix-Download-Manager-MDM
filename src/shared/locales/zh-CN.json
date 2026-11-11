@@ -2282,6 +2282,24 @@
         "clientConfigTitle": "AI 客户端配置 (Claude Desktop, Cursor)",
         "auditTitle": "最近 MCP 活动记录",
         "auditEmpty": "暂无 MCP 活动记录。"
+      },
+      "helperTools": {
+        "title": "辅助工具",
+        "description": "用于音视频解析和相册下载的经过校验的外部程序。",
+        "ytdlpDesc": "适用于数千个流媒体网站的音视频提取解析引擎。",
+        "gallerydlDesc": "适用于图片站、图库及相册的高级批量下载工具。",
+        "denoDesc": "现代、安全的 JavaScript 与 TypeScript 脚本运行时。",
+        "install": "安装",
+        "update": "检查更新",
+        "refresh": "刷新检测",
+        "notInstalled": "未安装",
+        "path": "路径",
+        "downloading": "正在下载...",
+        "verifying": "正在校验 SHA-256...",
+        "extracting": "正在解压...",
+        "customPathToggle": "自定义路径",
+        "customPathLabel": "自定义 {{name}} 程序路径",
+        "customPathPlaceholder": "{{name}} 可执行文件路径"
       }
     },
     "validation": {

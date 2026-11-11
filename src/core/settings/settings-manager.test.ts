@@ -1511,6 +1511,32 @@ describe('SettingsManager', () => {
       expect(directRes.settings.enabled).toBe(true)
     })
 
+    it('persists and retrieves helperTools settings', async () => {
+      expect(manager.getHelperTools().ytDlpBinaryPath).toBe('')
+      expect(manager.getHelperTools().galleryDlBinaryPath).toBe('')
+
+      await manager.update({
+        helperTools: {
+          ytDlpBinaryPath: 'C:\\custom\\yt-dlp.exe',
+          galleryDlBinaryPath: 'C:\\custom\\gallery-dl.exe',
+          denoBinaryPath: 'C:\\custom\\deno.exe',
+        },
+      })
+
+      expect(manager.getHelperTools().ytDlpBinaryPath).toBe(
+        'C:\\custom\\yt-dlp.exe'
+      )
+      expect(manager.getHelperTools().galleryDlBinaryPath).toBe(
+        'C:\\custom\\gallery-dl.exe'
+      )
+
+      const directRes = await manager.saveHelperToolsSettings({
+        denoBinaryPath: 'C:\\custom2\\deno.exe',
+      })
+      expect(directRes.ok).toBe(true)
+      expect(directRes.settings.denoBinaryPath).toBe('C:\\custom2\\deno.exe')
+    })
+
     it('does not reset instanceId to the unseeded sentinel on a partial bridge update', async () => {
       // Regression guard: `bridgeSettingsSchema` declares
       // `instanceId: z.string().catch('')`, so parsing a partial patch
