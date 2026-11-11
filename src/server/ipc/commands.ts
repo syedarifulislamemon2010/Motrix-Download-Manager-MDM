@@ -5,6 +5,7 @@ import type { EngineAdapter } from '@core/engine/engine-adapter'
 import type { EngineSupervisor } from '@core/engine/engine-supervisor'
 import { ENGINE_READY_TIMEOUT_MS } from '@core/engine/engine-supervisor'
 import type { EventBus } from '@core/events/event-bus'
+import type { ArchiveService } from '@core/extract'
 import type { GeoIPManager } from '@core/geoip/geo-ip-manager'
 import { createUpdateGeoIPDatabaseHandler } from '@core/geoip/update-geo-ip-database'
 import { getLogger } from '@core/logger'
@@ -91,6 +92,7 @@ import { Commands } from '@shared/protocol/commands'
 import { Events } from '@shared/protocol/events'
 import type { CommandHandlerMap } from '@shared/protocol/handler-types'
 import { taskCreateRequestSchema } from '@shared/schemas/add-task'
+import { autoExtractSettingsSchema } from '@shared/schemas/auto-extract-settings'
 import { btStorageRequestSchema } from '@shared/schemas/bt-storage'
 import {
   reAddTaskPayloadSchema,
@@ -147,6 +149,7 @@ export interface ServerCommandContext {
   operationService?: OperationService
   supervisor: EngineSupervisor
   settingsManager: SettingsManager
+  archiveService?: ArchiveService
   applyLocale?: (language: string) => Promise<void>
   geoipManager: Pick<GeoIPManager, 'triggerUpdate'>
   /** Session latch of the auto DNS fallback — reset when dnsMode changes. */
@@ -1095,6 +1098,27 @@ export function buildServerCommandHandlers(
     [Commands.ClearMcpAuditLogs]: async () => {
       ctx.mcpAuditLog?.clear()
       return { ok: true }
+    },
+
+    [Commands.SaveAutoExtractSettings]: async (payload: unknown) => {
+      const patch = autoExtractSettingsSchema.partial().parse(payload)
+      const result = await settingsManager.saveAutoExtractSettings(patch)
+      return { ok: true, settings: result.settings }
+    },
+
+    [Commands.ExtractArchive]: async (payload: unknown) => {
+      const { archivePath, destinationDir, password } = (payload ?? {}) as {
+        archivePath: string
+        destinationDir?: string
+        password?: string
+      }
+      if (!ctx.archiveService) {
+        throw new Error('ArchiveService not available')
+      }
+      return ctx.archiveService.extract(archivePath, {
+        destinationDir,
+        password,
+      })
     },
 
     [Commands.UpdateGeoIPDatabase]: createUpdateGeoIPDatabaseHandler({

@@ -40,6 +40,9 @@ export const Commands = {
   // AI Assistant MCP (F1)
   SaveMcpSettings: 'command:saveMcpSettings',
   ClearMcpAuditLogs: 'command:clearMcpAuditLogs',
+  // Archive Auto-Extract (F4)
+  ExtractArchive: 'command:extractArchive',
+  SaveAutoExtractSettings: 'command:saveAutoExtractSettings',
   PauseTask: 'command:pauseTask',
   ResumeTask: 'command:resumeTask',
   RemoveTask: 'command:removeTask',

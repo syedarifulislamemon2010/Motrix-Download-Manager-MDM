@@ -112,6 +112,9 @@ export const Queries = {
   // AI Assistant MCP (F1)
   GetMcpSettings: 'query:getMcpSettings',
   GetMcpAuditLogs: 'query:getMcpAuditLogs',
+  // Archive Auto-Extract (F4)
+  GetAutoExtractSettings: 'query:getAutoExtractSettings',
+  Detect7zStatus: 'query:detect7zStatus',
 } as const
 
 export type QueryChannel = (typeof Queries)[keyof typeof Queries]

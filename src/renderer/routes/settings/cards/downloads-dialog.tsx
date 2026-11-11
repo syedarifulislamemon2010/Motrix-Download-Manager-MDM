@@ -39,6 +39,7 @@ import type { ComponentProps } from 'react'
 import { useRef, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { useTranslation } from 'react-i18next'
+import { AutoExtractSection } from './auto-extract-section'
 import type { SettingsCardDialogProps } from './card-types'
 import {
   DOWNLOADS_DEFAULTS,
@@ -202,6 +203,8 @@ export function DownloadsDialog({
                     <SpeedLimitSection form={form} />
                     <Separator className="my-4" />
                     <EngineTuningSection form={form} />
+                    <Separator className="my-4" />
+                    <AutoExtractSection disabled={disabled} />
                   </fieldset>
                 </form>
               </Form>

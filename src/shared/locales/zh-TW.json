@@ -1775,7 +1775,32 @@
       "autofillFromClipboard": "自動填入剪貼簿連結",
       "fillInLinksWhenOpeningNewTask": "新增任務時，自動填入已複製的連結。",
       "saveFolders": "儲存位置",
-      "description": "檔案、下載速度與連線"
+      "description": "檔案、下載速度與連線",
+      "autoExtract": {
+        "title": "壓縮檔自動解壓縮",
+        "description": "下載完成後自動解壓縮檔案 (ZIP, 7z, RAR)。",
+        "enable": "下載完成後自動解壓縮",
+        "enableDesc": "壓縮檔下載成功後立即自動解壓縮其中的檔案。",
+        "mode": "解壓縮目標位置",
+        "modeDesc": "解壓縮檔案儲存的目標資料夾。",
+        "modeSubfolder": "子資料夾 (以壓縮檔命名)",
+        "modeInPlace": "目前下載資料夾",
+        "formats": "支援的格式",
+        "formatsZip": "ZIP",
+        "formatsSevenZip": "7-Zip (7z)",
+        "formatsRar": "RAR",
+        "deleteArchive": "解壓縮後刪除原壓縮檔",
+        "deleteArchiveDesc": "檔案成功解壓縮後安全刪除原始壓縮檔。",
+        "sevenZipPath": "7-Zip 執行檔路徑",
+        "sevenZipPathDesc": "自訂 7z.exe 路徑 (留空將自動偵測)。",
+        "sevenZipFound": "已偵測到",
+        "sevenZipNotFound": "未偵測到",
+        "sevenZipAutoDetectPlaceholder": "自動偵測 7z 執行檔...",
+        "activeBinary": "目前使用的執行檔",
+        "passwords": "解壓縮密碼庫",
+        "passwordsDesc": "解壓縮加密檔案時依序嘗試的預設密碼清單。",
+        "passwordPlaceholder": "輸入密碼..."
+      }
     },
     "network": {
       "dns": {

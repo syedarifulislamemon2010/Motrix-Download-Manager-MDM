@@ -1775,7 +1775,32 @@
       "autofillFromClipboard": "Isi tautan dari papan klip secara otomatis",
       "fillInLinksWhenOpeningNewTask": "Tautan yang disalin akan diisi secara otomatis saat membuka tugas baru.",
       "saveFolders": "Folder penyimpanan",
-      "description": "Berkas, kecepatan unduh, dan koneksi"
+      "description": "Berkas, kecepatan unduh, dan koneksi",
+      "autoExtract": {
+        "title": "Archive auto-extract",
+        "description": "Automatically extract archives (ZIP, 7z, RAR) after download completes.",
+        "enable": "Auto-extract completed archives",
+        "enableDesc": "Extract files when archive download finishes successfully.",
+        "mode": "Extraction destination",
+        "modeDesc": "Where to extract the archive contents.",
+        "modeSubfolder": "Subfolder (archive name)",
+        "modeInPlace": "Current download folder",
+        "formats": "Supported formats",
+        "formatsZip": "ZIP",
+        "formatsSevenZip": "7-Zip (7z)",
+        "formatsRar": "RAR",
+        "deleteArchive": "Delete archive after extraction",
+        "deleteArchiveDesc": "Safely delete original archive file after successful extraction.",
+        "sevenZipPath": "7-Zip executable path",
+        "sevenZipPathDesc": "Custom path to 7z.exe (leave empty for auto-detection).",
+        "sevenZipFound": "Detected",
+        "sevenZipNotFound": "Not detected",
+        "sevenZipAutoDetectPlaceholder": "Auto-detecting 7z executable...",
+        "activeBinary": "Active binary",
+        "passwords": "Extraction passwords",
+        "passwordsDesc": "List of passwords to try sequentially when extracting protected archives.",
+        "passwordPlaceholder": "Enter password..."
+      }
     },
     "network": {
       "dns": {

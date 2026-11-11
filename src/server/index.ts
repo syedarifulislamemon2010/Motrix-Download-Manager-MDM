@@ -33,6 +33,10 @@ import {
   EngineSupervisor,
 } from '@core/engine/engine-supervisor'
 import { EventBus } from '@core/events/event-bus'
+import {
+  ArchiveService,
+  createAutoExtractOccurrenceConsumer,
+} from '@core/extract'
 import { pathExists } from '@core/fs/path-exists'
 import { GeoIPManager } from '@core/geoip/geo-ip-manager'
 import { LocaleCoordinator } from '@core/i18n/locale-coordinator'
@@ -620,6 +624,9 @@ async function main() {
     listUndispatched: () => db.listUndispatchedOccurrences(),
     markDispatched: (occurrenceId) => db.markOccurrenceDispatched(occurrenceId),
     log,
+  })
+  const archiveService = new ArchiveService({
+    getSettings: () => settingsManager.getAutoExtract(),
   })
   const taskActivityService = new TaskActivityService(
     new TaskActivityStore(db.database),
@@ -1452,6 +1459,7 @@ async function main() {
     trackAsyncWork: (operation) => shellAsyncWork.run(operation),
     networkMonitor,
     mcpAuditLog,
+    archiveService,
     authorizeOutputWrite: nasTaskAccess?.authorizeOutputWrite,
     authorizeTaskWrite: nasTaskAccess?.authorizeWrite,
     authorizeTaskRemoval: nasTaskAccess?.authorizeRemoval,
@@ -1630,6 +1638,7 @@ async function main() {
     environment: process.env,
     networkMonitor,
     mcpAuditLog,
+    archiveService,
   })
 
   // Operator (control-plane) secret — provisioned INDEPENDENTLY of the
@@ -2006,6 +2015,18 @@ async function main() {
       occurrenceDispatcher.register(
         dnsFallbackConsumer.name,
         dnsFallbackConsumer.consume
+      )
+
+      const autoExtractConsumer = createAutoExtractOccurrenceConsumer({
+        archiveService,
+        getSettings: () => settingsManager.getAutoExtract(),
+        getTask: (id) => taskManager.getById(id),
+        eventBus,
+        log: log.child({ module: 'auto-extract' }),
+      })
+      occurrenceDispatcher.register(
+        autoExtractConsumer.name,
+        autoExtractConsumer.consume
       )
 
       await pluginStartup.recoverFinalize(() =>

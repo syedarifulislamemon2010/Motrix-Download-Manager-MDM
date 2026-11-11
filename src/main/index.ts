@@ -25,6 +25,10 @@ import {
   EngineSupervisor,
 } from '@core/engine/engine-supervisor'
 import { EventBus } from '@core/events/event-bus'
+import {
+  ArchiveService,
+  createAutoExtractOccurrenceConsumer,
+} from '@core/extract'
 import { locateFfmpeg } from '@core/ffmpeg/ffmpeg-locator'
 import { pathExists } from '@core/fs/path-exists'
 import { GeoIPManager } from '@core/geoip/geo-ip-manager'
@@ -541,6 +545,10 @@ const occurrenceDispatcher = new OccurrenceDispatcher({
   markDispatched: (occurrenceId) =>
     motrixDb.markOccurrenceDispatched(occurrenceId),
   log,
+})
+
+const archiveService = new ArchiveService({
+  getSettings: () => settingsManager.getAutoExtract(),
 })
 
 // ─── Task lifecycle helpers ─────────────────────────────
@@ -1391,6 +1399,18 @@ async function startEngineAndRestore(
   occurrenceDispatcher.register(
     dnsFallbackConsumer.name,
     dnsFallbackConsumer.consume
+  )
+
+  const autoExtractConsumer = createAutoExtractOccurrenceConsumer({
+    archiveService,
+    getSettings: () => settingsManager.getAutoExtract(),
+    getTask: (id) => taskManager.getById(id),
+    eventBus,
+    log: getLogger('auto-extract'),
+  })
+  occurrenceDispatcher.register(
+    autoExtractConsumer.name,
+    autoExtractConsumer.consume
   )
 
   const pluginStartup = new PluginRuntimeStartupCoordinator()
@@ -3217,6 +3237,7 @@ async function initializeMainProcess(): Promise<void> {
     hostVersion: app.getVersion(),
     builtinUpdater,
     overlayDir,
+    archiveService,
   }
 
   const mainCommandHandlers = buildCommandHandlers(commandContext)
@@ -3298,6 +3319,7 @@ async function initializeMainProcess(): Promise<void> {
     updateManager,
     networkMonitor,
     mcpAuditLog,
+    archiveService,
   })
   const disposeDownloadProgress = setupDownloadProgress({
     eventBus,

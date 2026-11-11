@@ -9,6 +9,11 @@ import {
   APP_RESTART_REQUIRED_KEYS,
   ENGINE_RESTART_REQUIRED_KEYS,
 } from '@shared/constants/restart-keys'
+import {
+  type AutoExtractSettings,
+  autoExtractSettingsSchema,
+  DEFAULT_AUTO_EXTRACT_SETTINGS,
+} from '@shared/schemas/auto-extract-settings'
 import type { BridgeSettings } from '@shared/schemas/bridge-settings'
 import {
   bridgeSettingsSchema,
@@ -38,15 +43,15 @@ import {
   SaveGeneralSettingsRequestSchema,
 } from '@shared/schemas/general-settings'
 import {
-  DEFAULT_NETWORK_SETTINGS,
-  type NetworkSettings,
-  networkSettingsSchema,
-} from '@shared/schemas/network-settings'
-import {
   DEFAULT_MCP_SETTINGS,
   type McpSettings,
   mcpSettingsSchema,
 } from '@shared/schemas/mcp-settings'
+import {
+  DEFAULT_NETWORK_SETTINGS,
+  type NetworkSettings,
+  networkSettingsSchema,
+} from '@shared/schemas/network-settings'
 import {
   DEFAULT_PROXY_SETTINGS,
   proxySettingsSchema,
@@ -80,11 +85,12 @@ import {
   mediaSettingsSchema,
   onboardingStateSchema,
   validateAppSettings,
+  validateAutoExtractSettings,
   validateDashboardLayoutSettings,
   validateEngineSettings,
+  validateMcpSettings,
   validateNatSettings,
   validateNetworkSettings,
-  validateMcpSettings,
   validateSpeedLimitSettings,
   validateTrackerSettings,
   windowStateSchema,
@@ -165,6 +171,7 @@ function createDefaultSettings(
     speedLimit: createDefaultSpeedLimitSettings(byteUnitSystem),
     network: { ...DEFAULT_NETWORK_SETTINGS },
     mcp: { ...DEFAULT_MCP_SETTINGS },
+    autoExtract: { ...DEFAULT_AUTO_EXTRACT_SETTINGS },
     // Fresh install: mint a real, durable instance id now rather than
     // persisting the '' sentinel. Unlike rpcSecret/defaultSaveDir (seeded
     // later by seedSentinels using instance-scoped defaults), the UUID
@@ -791,6 +798,18 @@ export class SettingsManager {
       })
     }
 
+    // Merge autoExtract settings
+    if (partial.autoExtract) {
+      next.autoExtract = validateAutoExtractSettings({
+        ...next.autoExtract,
+        ...partial.autoExtract,
+        formats: {
+          ...next.autoExtract.formats,
+          ...partial.autoExtract.formats,
+        },
+      })
+    }
+
     // Merge plugins
     if (partial.plugins !== undefined) {
       next.plugins = {
@@ -863,6 +882,9 @@ export class SettingsManager {
         (raw.network ?? {}) as NetworkSettings
       ),
       mcp: mcpSettingsSchema.parse((raw.mcp ?? {}) as McpSettings),
+      autoExtract: autoExtractSettingsSchema.parse(
+        (raw.autoExtract ?? {}) as AutoExtractSettings
+      ),
       windowState: windowStateSchema.parse(raw.windowState ?? {}),
     }
   }
@@ -873,6 +895,30 @@ export class SettingsManager {
 
   getMcp(): McpSettings {
     return this.settings.mcp ?? DEFAULT_MCP_SETTINGS
+  }
+
+  getAutoExtract(): AutoExtractSettings {
+    return this.settings.autoExtract ?? DEFAULT_AUTO_EXTRACT_SETTINGS
+  }
+
+  async saveAutoExtractSettings(patch: Partial<AutoExtractSettings>): Promise<{
+    ok: boolean
+    settings: AutoExtractSettings
+  }> {
+    return this.enqueueMutation(async () => {
+      const old = structuredClone(this.settings)
+      const next = structuredClone(this.settings)
+      const nextAutoExtract = validateAutoExtractSettings({
+        ...old.autoExtract,
+        ...patch,
+      })
+      next.autoExtract = nextAutoExtract
+      if (JSON.stringify(old.autoExtract) !== JSON.stringify(nextAutoExtract)) {
+        await this.saveSettings(next)
+        this.commitSettings(old, next)
+      }
+      return { ok: true, settings: next.autoExtract }
+    })
   }
 
   async saveMcpSettings(patch: Partial<McpSettings>): Promise<{

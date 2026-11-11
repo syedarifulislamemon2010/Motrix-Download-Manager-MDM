@@ -1,13 +1,10 @@
 import { appSettingsSchema } from '@shared/schemas/app-settings'
+import { autoExtractSettingsSchema } from '@shared/schemas/auto-extract-settings'
 import { dashboardLayoutSettingsSchema } from '@shared/schemas/dashboard-layout'
 import { engineSettingsSchema } from '@shared/schemas/engine-settings'
+import { mcpSettingsSchema } from '@shared/schemas/mcp-settings'
 import { natSettingsSchema } from '@shared/schemas/nat-settings'
 import { networkSettingsSchema } from '@shared/schemas/network-settings'
-import {
-  DEFAULT_MCP_SETTINGS,
-  type McpSettings,
-  mcpSettingsSchema,
-} from '@shared/schemas/mcp-settings'
 import { speedLimitSettingsSchema } from '@shared/schemas/speed-limit'
 import type {
   DashboardLayoutSettings,
@@ -32,6 +29,11 @@ export {
   DEFAULT_APP_SETTINGS,
 } from '@shared/schemas/app-settings'
 export {
+  type AutoExtractSettings,
+  autoExtractSettingsSchema,
+  DEFAULT_AUTO_EXTRACT_SETTINGS,
+} from '@shared/schemas/auto-extract-settings'
+export {
   DASHBOARD_COLUMNS,
   DEFAULT_DASHBOARD_LAYOUT,
   dashboardLayoutSettingsSchema,
@@ -45,6 +47,11 @@ export {
   geoIpSettingsSchema,
 } from '@shared/schemas/geoip-settings'
 export {
+  DEFAULT_MCP_SETTINGS,
+  type McpSettings,
+  mcpSettingsSchema,
+} from '@shared/schemas/mcp-settings'
+export {
   DEFAULT_MEDIA_SETTINGS,
   mediaSettingsSchema,
 } from '@shared/schemas/media-settings'
@@ -56,11 +63,6 @@ export {
   DEFAULT_NETWORK_SETTINGS,
   networkSettingsSchema,
 } from '@shared/schemas/network-settings'
-export {
-  DEFAULT_MCP_SETTINGS,
-  mcpSettingsSchema,
-  type McpSettings,
-} from '@shared/schemas/mcp-settings'
 export {
   DEFAULT_ONBOARDING_STATE,
   onboardingStateSchema,
@@ -116,6 +118,12 @@ export function validateMcpSettings(
   input: import('@shared/schemas/mcp-settings').McpSettings
 ): import('@shared/schemas/mcp-settings').McpSettings {
   return mcpSettingsSchema.parse(input)
+}
+
+export function validateAutoExtractSettings(
+  input: unknown
+): import('@shared/schemas/auto-extract-settings').AutoExtractSettings {
+  return autoExtractSettingsSchema.parse(input)
 }
 
 export function validateDashboardLayoutSettings(

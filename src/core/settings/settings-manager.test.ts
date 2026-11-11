@@ -1487,6 +1487,30 @@ describe('SettingsManager', () => {
       expect(directRes.settings.enabled).toBe(true)
     })
 
+    it('persists and retrieves autoExtract settings', async () => {
+      expect(manager.getAutoExtract().enabled).toBe(false)
+      expect(manager.getAutoExtract().mode).toBe('subfolder')
+
+      await manager.update({
+        autoExtract: {
+          enabled: true,
+          mode: 'in_place',
+          deleteArchiveAfterExtract: true,
+        },
+      })
+
+      expect(manager.getAutoExtract().enabled).toBe(true)
+      expect(manager.getAutoExtract().mode).toBe('in_place')
+      expect(manager.getAutoExtract().deleteArchiveAfterExtract).toBe(true)
+
+      const directRes = await manager.saveAutoExtractSettings({
+        mode: 'subfolder',
+      })
+      expect(directRes.ok).toBe(true)
+      expect(directRes.settings.mode).toBe('subfolder')
+      expect(directRes.settings.enabled).toBe(true)
+    })
+
     it('does not reset instanceId to the unseeded sentinel on a partial bridge update', async () => {
       // Regression guard: `bridgeSettingsSchema` declares
       // `instanceId: z.string().catch('')`, so parsing a partial patch

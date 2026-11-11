@@ -139,6 +139,8 @@ export const Events = {
   KillSwitchStateChanged: 'event:killSwitchStateChanged',
   // AI Assistant MCP (F1)
   McpAuditLogAdded: 'event:mcpAuditLogAdded',
+  // Archive Auto-Extract (F4)
+  ArchiveExtracted: 'event:archiveExtracted',
 } as const
 
 export type EventChannel = (typeof Events)[keyof typeof Events]

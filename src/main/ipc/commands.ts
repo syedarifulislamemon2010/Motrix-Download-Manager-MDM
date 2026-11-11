@@ -8,6 +8,7 @@ import type { EngineAdapter } from '@core/engine/engine-adapter'
 import type { EngineSupervisor } from '@core/engine/engine-supervisor'
 import { ENGINE_READY_TIMEOUT_MS } from '@core/engine/engine-supervisor'
 import type { EventBus } from '@core/events/event-bus'
+import type { ArchiveService } from '@core/extract'
 import type { GeoIPManager } from '@core/geoip/geo-ip-manager'
 import { createUpdateGeoIPDatabaseHandler } from '@core/geoip/update-geo-ip-database'
 import { getLogger } from '@core/logger'
@@ -120,6 +121,7 @@ import {
   torrentBatchCreateOptionsSchema,
 } from '@shared/schemas/add-task'
 import { appImageNativeHostActionSchema } from '@shared/schemas/appimage-native-host'
+import { autoExtractSettingsSchema } from '@shared/schemas/auto-extract-settings'
 import { btStorageRequestSchema } from '@shared/schemas/bt-storage'
 import {
   reAddTaskPayloadSchema,
@@ -221,6 +223,7 @@ export interface CommandContext {
   recoverFinalization?: (taskId: string, sha256?: string) => Promise<void>
   sessionManager: SessionManager
   settingsManager: SettingsManager
+  archiveService?: ArchiveService
   applyLocale?: (language: string) => Promise<void>
   protocolManager: ReturnType<typeof createProtocolManager>
   windowManager: WindowManager
@@ -1424,6 +1427,27 @@ export function buildCommandHandlers(ctx: CommandContext): CommandHandlerMap {
     [Commands.ClearMcpAuditLogs]: async () => {
       ctx.mcpAuditLog?.clear()
       return { ok: true }
+    },
+
+    [Commands.SaveAutoExtractSettings]: async (payload: unknown) => {
+      const patch = autoExtractSettingsSchema.partial().parse(payload)
+      const result = await settingsManager.saveAutoExtractSettings(patch)
+      return { ok: true, settings: result.settings }
+    },
+
+    [Commands.ExtractArchive]: async (payload: unknown) => {
+      const { archivePath, destinationDir, password } = (payload ?? {}) as {
+        archivePath: string
+        destinationDir?: string
+        password?: string
+      }
+      if (!ctx.archiveService) {
+        throw new Error('ArchiveService not available')
+      }
+      return ctx.archiveService.extract(archivePath, {
+        destinationDir,
+        password,
+      })
     },
 
     [Commands.RestartEngine]: async () => {

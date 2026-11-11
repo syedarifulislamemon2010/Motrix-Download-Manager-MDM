@@ -4,6 +4,7 @@ import type { EngineAdapter } from '@core/engine/engine-adapter'
 import type { EngineSupervisor } from '@core/engine/engine-supervisor'
 import { createGetEngineTaskOptionsHandler } from '@core/engine/get-engine-task-options'
 import { getTuningRecommendation } from '@core/engine/get-tuning-recommendation'
+import { type ArchiveService, SevenZipDetector } from '@core/extract'
 import { getFfmpegInstallStatus } from '@core/ffmpeg/verified-install'
 import { pathExists } from '@core/fs/path-exists'
 import type { GeoIPManager } from '@core/geoip/geo-ip-manager'
@@ -147,6 +148,7 @@ export interface ServerQueryContext {
   environment: NodeJS.ProcessEnv
   networkMonitor?: NetworkInterfaceMonitor
   mcpAuditLog?: McpAuditLog
+  archiveService?: ArchiveService
 }
 
 export function buildServerQueryHandlers(
@@ -306,6 +308,20 @@ export function buildServerQueryHandlers(
 
     [Queries.GetMcpAuditLogs]: async () => {
       return ctx.mcpAuditLog?.getEntries() ?? []
+    },
+
+    [Queries.GetAutoExtractSettings]: async () => {
+      return settingsManager.getAutoExtract()
+    },
+
+    [Queries.Detect7zStatus]: async () => {
+      const customPath = settingsManager.getAutoExtract().custom7zPath
+      const detector = new SevenZipDetector(() => customPath)
+      const foundPath = detector.find7z()
+      return {
+        available: Boolean(foundPath),
+        executablePath: foundPath ?? null,
+      }
     },
     // A remote server cannot read the browser user's operating-system accent.
     [Queries.GetSystemAccentColor]: async () => null,

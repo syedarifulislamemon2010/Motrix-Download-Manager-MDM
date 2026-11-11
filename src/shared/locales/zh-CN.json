@@ -1775,7 +1775,32 @@
       "autofillFromClipboard": "自动填入剪贴板链接",
       "fillInLinksWhenOpeningNewTask": "新建任务时，自动填入已复制的链接。",
       "saveFolders": "保存位置",
-      "description": "文件、下载速度与连接"
+      "description": "文件、下载速度与连接",
+      "autoExtract": {
+        "title": "压缩包自动解压",
+        "description": "下载完成后自动解压压缩文件 (ZIP, 7z, RAR)。",
+        "enable": "下载完成后自动解压",
+        "enableDesc": "压缩包下载成功后立即自动解压其中的文件。",
+        "mode": "解压目标位置",
+        "modeDesc": "解压文件保存的目标文件夹。",
+        "modeSubfolder": "子文件夹 (以压缩包命名)",
+        "modeInPlace": "当前下载文件夹",
+        "formats": "支持的格式",
+        "formatsZip": "ZIP",
+        "formatsSevenZip": "7-Zip (7z)",
+        "formatsRar": "RAR",
+        "deleteArchive": "解压后删除原压缩包",
+        "deleteArchiveDesc": "文件成功解压后安全删除源压缩包文件。",
+        "sevenZipPath": "7-Zip 可执行文件路径",
+        "sevenZipPathDesc": "自定义 7z.exe 路径 (留空将自动检测)。",
+        "sevenZipFound": "已检测到",
+        "sevenZipNotFound": "未检测到",
+        "sevenZipAutoDetectPlaceholder": "自动检测 7z 可执行文件...",
+        "activeBinary": "当前使用的二进制",
+        "passwords": "解压密码库",
+        "passwordsDesc": "解压加密文件时按顺序尝试的预设密码列表。",
+        "passwordPlaceholder": "输入密码..."
+      }
     },
     "network": {
       "dns": {
