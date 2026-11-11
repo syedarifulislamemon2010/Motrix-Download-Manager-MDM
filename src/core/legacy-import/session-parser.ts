@@ -76,6 +76,20 @@ export function getLegacyRequestValues(
   return privateRequestValues.get(entry) ?? EMPTY_REQUEST_VALUES
 }
 
+export function setLegacyRequestValues(
+  entry: LegacySessionEntry,
+  values: LegacyRequestValues
+): void {
+  privateRequestValues.set(entry, values)
+}
+
+export function setLegacyIgnoredOptions(
+  entry: LegacySessionEntry,
+  options: readonly string[]
+): void {
+  privateIgnoredOptions.set(entry, options)
+}
+
 function safeOptionName(name: string): boolean {
   return name.length <= 64 && /^[a-z0-9-]+$/.test(name)
 }
