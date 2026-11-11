@@ -135,6 +135,8 @@ export const Events = {
   // Renderer-local shell state. Electron sends this directly to the owning
   // BrowserWindow instead of broadcasting it through the core event bus.
   WindowMaximizedChanged: 'event:windowMaximizedChanged',
+  // Network interface binding & kill-switch (F3)
+  KillSwitchStateChanged: 'event:killSwitchStateChanged',
 } as const
 
 export type EventChannel = (typeof Events)[keyof typeof Events]

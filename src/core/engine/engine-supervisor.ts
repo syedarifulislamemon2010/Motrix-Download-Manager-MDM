@@ -27,6 +27,7 @@ import {
 } from '@shared/types/engine'
 import type { EngineSettings } from '@shared/types/settings'
 import type { EventBus } from '../events/event-bus'
+import { resolveInterfaceIp } from '../network/network-interface-resolver'
 import { probePrecise } from '../probe/disk-probe'
 import type { SettingsManager } from '../settings/settings-manager'
 import type { Aria2Adapter } from './aria2/aria2-adapter'
@@ -503,13 +504,16 @@ export class EngineSupervisor {
         },
         'preparing aria2 RPC configuration'
       )
+      const networkSettings = this.settingsManager.getNetwork()
+      const bindInterfaceIp = resolveInterfaceIp(networkSettings.bindInterface)
       const args = this.configBuilder.buildArgs(
         engineSettings,
         featureReport.hasSqlitePersistence,
         resolvedProxy,
         effective,
         defaultSaveDir,
-        loadTextSession
+        loadTextSession,
+        bindInterfaceIp
       )
       this.lastStartArgs = args
 

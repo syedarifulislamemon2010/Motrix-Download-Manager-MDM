@@ -106,6 +106,9 @@ export const Queries = {
   GetWindowsDefaultAssociations: 'query:getWindowsDefaultAssociations',
   GetApplicationMenu: 'query:getApplicationMenu',
   CheckTaskFileExists: 'query:checkTaskFileExists',
+  // Network interface binding & kill-switch (F3)
+  GetNetworkInterfaces: 'query:getNetworkInterfaces',
+  GetNetworkSettings: 'query:getNetworkSettings',
 } as const
 
 export type QueryChannel = (typeof Queries)[keyof typeof Queries]

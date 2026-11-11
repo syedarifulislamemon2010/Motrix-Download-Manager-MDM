@@ -1855,7 +1855,18 @@
         "enableDesc": "위에서 활성화한 점검을 반복합니다."
       },
       "description": "프록시, DNS 및 연결 점검",
-      "diagnostics": "네트워크 진단"
+      "diagnostics": "네트워크 진단",
+      "interface": {
+        "title": "Network interface & VPN",
+        "bind": "Network interface",
+        "bindDesc": "Bind downloads to a specific network adapter (e.g. VPN). Requires engine restart.",
+        "allInterfaces": "All interfaces (Default)",
+        "killSwitch": "VPN Kill-Switch",
+        "killSwitchDesc": "Automatically pause all active downloads if the selected network adapter disconnects or drops its IP.",
+        "killSwitchEngaged": "Kill-switch engaged: Downloads paused because '{{adapter}}' is unavailable.",
+        "killSwitchDisengaged": "Interface '{{adapter}}' restored. Resumed {{count}} paused tasks.",
+        "offline": "Offline"
+      }
     },
     "common": {
       "browse": "찾아보기…",

@@ -38,6 +38,11 @@ import {
   SaveGeneralSettingsRequestSchema,
 } from '@shared/schemas/general-settings'
 import {
+  DEFAULT_NETWORK_SETTINGS,
+  type NetworkSettings,
+  networkSettingsSchema,
+} from '@shared/schemas/network-settings'
+import {
   DEFAULT_PROXY_SETTINGS,
   proxySettingsSchema,
 } from '@shared/schemas/proxy-settings'
@@ -73,6 +78,7 @@ import {
   validateDashboardLayoutSettings,
   validateEngineSettings,
   validateNatSettings,
+  validateNetworkSettings,
   validateSpeedLimitSettings,
   validateTrackerSettings,
   windowStateSchema,
@@ -151,6 +157,7 @@ function createDefaultSettings(
     media: { ...DEFAULT_MEDIA_SETTINGS },
     dashboard: validateDashboardLayoutSettings({} as DashboardLayoutSettings),
     speedLimit: createDefaultSpeedLimitSettings(byteUnitSystem),
+    network: { ...DEFAULT_NETWORK_SETTINGS },
     // Fresh install: mint a real, durable instance id now rather than
     // persisting the '' sentinel. Unlike rpcSecret/defaultSaveDir (seeded
     // later by seedSentinels using instance-scoped defaults), the UUID
@@ -757,6 +764,18 @@ export class SettingsManager {
       })
     }
 
+    // Merge network settings
+    if (partial.network) {
+      const oldBind = next.network?.bindInterface ?? ''
+      next.network = validateNetworkSettings({
+        ...next.network,
+        ...partial.network,
+      })
+      if (next.network.bindInterface !== oldBind) {
+        changedRestartKeys.push('network.bindInterface')
+      }
+    }
+
     // Merge plugins
     if (partial.plugins !== undefined) {
       next.plugins = {
@@ -825,7 +844,37 @@ export class SettingsManager {
             )
           : validateSpeedLimitSettings(raw.speedLimit),
       bridge: bridgeSettingsSchema.parse((raw.bridge ?? {}) as BridgeSettings),
+      network: networkSettingsSchema.parse(
+        (raw.network ?? {}) as NetworkSettings
+      ),
       windowState: windowStateSchema.parse(raw.windowState ?? {}),
     }
+  }
+
+  getNetwork(): NetworkSettings {
+    return this.settings.network
+  }
+
+  async saveNetworkSettings(patch: Partial<NetworkSettings>): Promise<{
+    ok: boolean
+    settings: NetworkSettings
+    requiresRestart: boolean
+  }> {
+    return this.enqueueMutation(async () => {
+      const old = structuredClone(this.settings)
+      const next = structuredClone(this.settings)
+      const nextNetwork = networkSettingsSchema.parse({
+        ...old.network,
+        ...patch,
+      })
+      next.network = nextNetwork
+      const bindChanged =
+        old.network.bindInterface !== nextNetwork.bindInterface
+      if (JSON.stringify(old.network) !== JSON.stringify(nextNetwork)) {
+        await this.saveSettings(next)
+        this.commitSettings(old, next)
+      }
+      return { ok: true, settings: next.network, requiresRestart: bindChanged }
+    })
   }
 }

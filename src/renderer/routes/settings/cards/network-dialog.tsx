@@ -47,10 +47,16 @@ import { Switch } from '@renderer/components/ui/switch'
 import { pickDirty } from '@renderer/lib/form-utils'
 import { saveSettings } from '@renderer/lib/settings-save'
 import { transport } from '@renderer/lib/transport'
+import { Events } from '@shared/protocol/events'
+import { Queries } from '@shared/protocol/queries'
 import {
   DEFAULT_ENGINE_SETTINGS,
   DEFAULT_NAT_SETTINGS,
+  DEFAULT_NETWORK_SETTINGS,
   DEFAULT_PROXY_SETTINGS,
+  type KillSwitchStatePayload,
+  type NetworkInterfaceInfo,
+  type NetworkSettings,
 } from '@shared/schemas'
 import {
   portCheckerInputSchema,
@@ -70,16 +76,18 @@ import { networkFormSchema } from './settings-form-schemas'
 export interface NetworkFields {
   proxy: ProxySettings
   nat: NatSettings
+  network: NetworkSettings
   // Only the DNS slice of EngineSettings is edited here; the rest of the
   // engine namespace stays with the Downloads dialog.
   engine: { dnsMode: DnsResolutionMode }
 }
 
-// Source of truth: src/shared/schemas/{proxy,nat,engine}-settings.ts.
+// Source of truth: src/shared/schemas/{proxy,nat,network,engine}-settings.ts.
 // Keep in sync with the corresponding DEFAULT_* exports.
 const DEFAULTS: NetworkFields = {
   proxy: { ...DEFAULT_PROXY_SETTINGS },
   nat: { ...DEFAULT_NAT_SETTINGS },
+  network: { ...DEFAULT_NETWORK_SETTINGS },
   engine: { dnsMode: DEFAULT_ENGINE_SETTINGS.dnsMode },
 }
 
@@ -132,18 +140,62 @@ export function NetworkDialog({
     { value: 'engine', label: t('settings.network.dns.modeEngine') },
   ] as const
 
+  const [availableInterfaces, setAvailableInterfaces] = useState<
+    NetworkInterfaceInfo[]
+  >([])
+  const [killSwitchState, setKillSwitchState] =
+    useState<KillSwitchStatePayload | null>(null)
+
+  useEffect(() => {
+    let active = true
+    transport
+      .invoke(Queries.GetNetworkInterfaces)
+      .then((data) => {
+        if (active && Array.isArray(data)) {
+          setAvailableInterfaces(data as NetworkInterfaceInfo[])
+        }
+      })
+      .catch(() => {})
+
+    const onKillSwitch = (payload: unknown) => {
+      setKillSwitchState(payload as KillSwitchStatePayload)
+    }
+    transport.on(Events.KillSwitchStateChanged, onKillSwitch)
+
+    return () => {
+      active = false
+      transport.off(Events.KillSwitchStateChanged, onKillSwitch)
+    }
+  }, [])
+
   const load = useSettingsLoad((all) => {
     if (!all?.proxy || !all.nat) throw new Error('Missing settings baseline')
     if (all?.proxy && all?.nat) {
       form.reset({
         proxy: all.proxy,
         nat: all.nat,
+        network: all.network ?? { ...DEFAULT_NETWORK_SETTINGS },
         engine: {
           dnsMode: all.engine?.dnsMode ?? DEFAULT_ENGINE_SETTINGS.dnsMode,
         },
       })
     }
   })
+
+  const currentBind = form.watch('network.bindInterface')
+  const interfaceOptions = [
+    { value: '__all__', label: t('settings.network.interface.allInterfaces') },
+    ...availableInterfaces.map((iface) => ({
+      value: iface.name,
+      label: iface.ipv4 ? `${iface.name} (${iface.ipv4})` : iface.name,
+    })),
+  ]
+  if (currentBind && !availableInterfaces.some((i) => i.name === currentBind)) {
+    interfaceOptions.push({
+      value: currentBind,
+      label: `${currentBind} (${t('settings.network.interface.offline')})`,
+    })
+  }
 
   const onSubmit = useSettingsSubmit(form, async (values) => {
     if (!load.ready) return
@@ -237,6 +289,89 @@ export function NetworkDialog({
                                 </SelectGroup>
                               </SelectContent>
                             </Select>
+                          </FormControl>
+                        </SettingsFormRow>
+                      )}
+                    />
+
+                    <Separator className="my-4" />
+
+                    {/* Network interface binding & VPN kill-switch */}
+                    <h3 className="text-sm font-semibold text-foreground">
+                      {t('settings.network.interface.title')}
+                    </h3>
+
+                    {killSwitchState?.active && (
+                      <div
+                        role="alert"
+                        className="rounded-md border border-destructive/50 bg-destructive/10 p-3 text-sm text-destructive"
+                      >
+                        {t('settings.network.interface.killSwitchEngaged', {
+                          adapter:
+                            killSwitchState.interfaceName ||
+                            form.watch('network.bindInterface'),
+                        })}
+                      </div>
+                    )}
+
+                    <FormField
+                      control={form.control}
+                      name="network.bindInterface"
+                      render={({ field }) => (
+                        <SettingsFormRow className="flex flex-col items-stretch gap-2 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
+                          <div className="min-w-0 flex-1 space-y-1">
+                            <FormLabel>
+                              {t('settings.network.interface.bind')}
+                            </FormLabel>
+                            <FormDescription className="text-xs">
+                              {t('settings.network.interface.bindDesc')}
+                            </FormDescription>
+                          </div>
+                          <FormControl>
+                            <Select
+                              items={interfaceOptions}
+                              value={field.value || '__all__'}
+                              onValueChange={(value) => {
+                                field.onChange(value === '__all__' ? '' : value)
+                              }}
+                            >
+                              <SettingsSelectTrigger className="w-full sm:w-[240px]">
+                                <SelectValue />
+                              </SettingsSelectTrigger>
+                              <SelectContent>
+                                <SelectGroup>
+                                  {interfaceOptions.map(({ label, value }) => (
+                                    <SelectItem key={value} value={value}>
+                                      {label}
+                                    </SelectItem>
+                                  ))}
+                                </SelectGroup>
+                              </SelectContent>
+                            </Select>
+                          </FormControl>
+                        </SettingsFormRow>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name="network.killSwitch"
+                      render={({ field }) => (
+                        <SettingsFormRow className="flex flex-col items-stretch gap-2 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
+                          <div className="min-w-0 flex-1 space-y-1">
+                            <FormLabel>
+                              {t('settings.network.interface.killSwitch')}
+                            </FormLabel>
+                            <FormDescription className="text-xs">
+                              {t('settings.network.interface.killSwitchDesc')}
+                            </FormDescription>
+                          </div>
+                          <FormControl>
+                            <Switch
+                              checked={field.value}
+                              onCheckedChange={field.onChange}
+                              disabled={!form.watch('network.bindInterface')}
+                            />
                           </FormControl>
                         </SettingsFormRow>
                       )}

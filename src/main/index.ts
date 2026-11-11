@@ -45,6 +45,7 @@ import {
 } from '@core/legacy-import/legacy-task-policy'
 import { newTaskId } from '@core/lib/ids'
 import { getLogger } from '@core/logger'
+import { NetworkInterfaceMonitor } from '@core/network/network-interface-monitor'
 import { registerEngineCompatibilitySubscriber } from '@core/notifications/engine-compatibility-subscriber'
 import { registerEngineFailureSubscriber } from '@core/notifications/engine-failure-subscriber'
 import { NotificationCenter } from '@core/notifications/notification-center'
@@ -3040,6 +3041,71 @@ async function initializeMainProcess(): Promise<void> {
     trackAsyncWork: (operation) => mainProcessWork.run(operation),
   })
 
+  const mainTaskActionDeps = {
+    onPauseRequested: (taskId: string) =>
+      trackerManager?.noteTaskControl(taskId, true),
+    onResumeRequested: (taskId: string) =>
+      trackerManager?.noteTaskControl(taskId, false),
+    taskManager,
+    adapter,
+    eventBus,
+    log,
+    persistTask,
+    persistTaskWithOccurrence,
+    occurrenceDispatcher,
+    recordTransition: (input: RuntimeTransitionInput) =>
+      activeTaskInspectorActivityRuntime.recordTransition(input),
+    runTaskMutation: <T>(
+      taskIds: readonly string[],
+      operation: () => Promise<T>
+    ) => activeTaskInspectorActivityRuntime.runTaskMutation(taskIds, operation),
+    publishTaskUpdate,
+    publishTaskUpdateNow,
+  }
+
+  const networkMonitor = new NetworkInterfaceMonitor({
+    getNetworkSettings: () => settingsManager.getNetwork(),
+    pauseTasks: async () => {
+      const activeTasks = taskManager
+        .getAll()
+        .filter(
+          (t) =>
+            t.status === TaskStatus.Downloading ||
+            t.status === TaskStatus.Queued ||
+            t.status === TaskStatus.FetchingMetadata
+        )
+      const pausedIds: string[] = []
+      for (const task of activeTasks) {
+        try {
+          await pauseTaskAction(task.id, mainTaskActionDeps)
+          pausedIds.push(task.id)
+        } catch (err) {
+          log.warn({ err, taskId: task.id }, 'kill-switch failed to pause task')
+        }
+      }
+      return pausedIds
+    },
+    resumeTasks: async (taskIds: string[]) => {
+      for (const id of taskIds) {
+        try {
+          await resumeTaskAction(id, mainTaskActionDeps)
+        } catch (err) {
+          log.warn({ err, taskId: id }, 'kill-switch failed to resume task')
+        }
+      }
+    },
+    onIpChanged: async (_newIp) => {
+      log.info('bound network interface IP changed, restarting engine')
+      try {
+        await supervisor.restart()
+      } catch (err) {
+        log.error({ err }, 'failed to restart supervisor after IP change')
+      }
+    },
+    eventBus,
+  })
+  networkMonitor.start()
+
   const disposeCommandHandlers = registerCommandHandlers({
     btStorageRuntime: pluginRuntime.finalize,
     persistBtStorage: (task, source, target) =>
@@ -3049,6 +3115,7 @@ async function initializeMainProcess(): Promise<void> {
     mediaMetaStore,
     cliToolService,
     supervisor,
+    networkMonitor,
     dnsFallback: { reset: () => dnsFallbackConsumer?.reset() },
     bindTaskRetry: (fn) => {
       dnsFallbackRetry = fn
@@ -3154,6 +3221,7 @@ async function initializeMainProcess(): Promise<void> {
     userDataDir: platform.userDataDir,
     speedLimitController,
     updateManager,
+    networkMonitor,
   })
   const disposeDownloadProgress = setupDownloadProgress({
     eventBus,
@@ -3189,6 +3257,7 @@ async function initializeMainProcess(): Promise<void> {
     logError: (err) => log.warn({ err }, 'completion shutdown failed'),
   })
   disposeIpcIngress = () => {
+    networkMonitor.stop()
     disposeLegacyImportIpc()
     disposeDownloadProgress()
     disposeCompletionShutdown()

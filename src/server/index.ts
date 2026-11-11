@@ -50,6 +50,7 @@ import {
 } from '@core/legacy-import/legacy-task-policy'
 import { newTaskId } from '@core/lib/ids'
 import { getLogger, initLogger } from '@core/logger'
+import { NetworkInterfaceMonitor } from '@core/network/network-interface-monitor'
 import { registerEngineCompatibilitySubscriber } from '@core/notifications/engine-compatibility-subscriber'
 import { registerEngineFailureSubscriber } from '@core/notifications/engine-failure-subscriber'
 import { NotificationCenter } from '@core/notifications/notification-center'
@@ -139,7 +140,7 @@ import { EngineState } from '@shared/types/engine'
 import { getHiddenNotificationKinds } from '@shared/types/notification'
 import type { AppSettings } from '@shared/types/settings'
 import type { DownloadTask } from '@shared/types/task'
-import { TaskType } from '@shared/types/task'
+import { TaskStatus, TaskType } from '@shared/types/task'
 import pino from 'pino'
 import packageJson from '../../package.json' with { type: 'json' }
 import { ServerUpdateService } from './app-update-service'
@@ -1368,10 +1369,73 @@ async function main() {
     currentVersion: appVersion,
     channel: settingsManager.getApp().updateChannel,
   })
+
+  const serverTaskActionDeps = {
+    taskManager,
+    adapter,
+    eventBus,
+    log,
+    persistTask,
+    persistTaskWithOccurrence,
+    occurrenceDispatcher,
+    recordTransition: (input: RuntimeTransitionInput) =>
+      taskInspectorActivityRuntime.recordTransition(input),
+    runTaskMutation: <T>(
+      taskIds: readonly string[],
+      operation: () => Promise<T>
+    ) => taskInspectorActivityRuntime.runTaskMutation(taskIds, operation),
+    publishTaskUpdate,
+    publishTaskUpdateNow,
+  }
+
+  const networkMonitor = new NetworkInterfaceMonitor({
+    getNetworkSettings: () => settingsManager.getNetwork(),
+    pauseTasks: async () => {
+      const activeTasks = taskManager
+        .getAll()
+        .filter(
+          (t) =>
+            t.status === TaskStatus.Downloading ||
+            t.status === TaskStatus.Queued ||
+            t.status === TaskStatus.FetchingMetadata
+        )
+      const pausedIds: string[] = []
+      for (const task of activeTasks) {
+        try {
+          await pauseTaskAction(task.id, serverTaskActionDeps)
+          pausedIds.push(task.id)
+        } catch (err) {
+          log.warn({ err, taskId: task.id }, 'kill-switch failed to pause task')
+        }
+      }
+      return pausedIds
+    },
+    resumeTasks: async (taskIds: string[]) => {
+      for (const id of taskIds) {
+        try {
+          await resumeTaskAction(id, serverTaskActionDeps)
+        } catch (err) {
+          log.warn({ err, taskId: id }, 'kill-switch failed to resume task')
+        }
+      }
+    },
+    onIpChanged: async (_newIp) => {
+      log.info('bound network interface IP changed, restarting engine')
+      try {
+        await supervisor.restart()
+      } catch (err) {
+        log.error({ err }, 'failed to restart supervisor after IP change')
+      }
+    },
+    eventBus,
+  })
+  networkMonitor.start()
+
   const commandHandlers = buildServerCommandHandlers({
     updateService,
     userDataDir: platform.userDataDir,
     trackAsyncWork: (operation) => shellAsyncWork.run(operation),
+    networkMonitor,
     authorizeOutputWrite: nasTaskAccess?.authorizeOutputWrite,
     authorizeTaskWrite: nasTaskAccess?.authorizeWrite,
     authorizeTaskRemoval: nasTaskAccess?.authorizeRemoval,
@@ -1464,6 +1528,7 @@ async function main() {
     log: getLogger('magnet-selection-timeout'),
   })
   shutdownActions.drainMagnet = async () => {
+    networkMonitor.stop()
     await Promise.all([
       selectionTimeout.stopAndDrain(),
       magnetTracker.stopAndDrain(),
@@ -1498,6 +1563,7 @@ async function main() {
     speedLimitController,
     downloadPathPolicy,
     environment: process.env,
+    networkMonitor,
   })
 
   // Operator (control-plane) secret — provisioned INDEPENDENTLY of the

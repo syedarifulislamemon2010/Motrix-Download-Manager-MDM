@@ -7,6 +7,8 @@ import { getFfmpegInstallStatus } from '@core/ffmpeg/verified-install'
 import { pathExists } from '@core/fs/path-exists'
 import type { GeoIPManager } from '@core/geoip/geo-ip-manager'
 import { createGetGeoIPStatusHandler } from '@core/geoip/get-geo-ip-status'
+import type { NetworkInterfaceMonitor } from '@core/network/network-interface-monitor'
+import { listNetworkInterfaces } from '@core/network/network-interface-resolver'
 import type { CapabilityHost } from '@core/plugin/capabilities/interface'
 import { readCommandGraph } from '@core/plugin/commands/command-graph'
 import type { GrantsManager } from '@core/plugin/grants/grants-manager'
@@ -101,6 +103,7 @@ export interface QueryContext {
   userDataDir: string
   speedLimitController: SpeedLimitController
   updateManager: AppUpdateService
+  networkMonitor?: NetworkInterfaceMonitor
 }
 
 export function buildQueryHandlers(ctx: QueryContext): QueryHandlerMap {
@@ -190,6 +193,17 @@ export function buildQueryHandlers(ctx: QueryContext): QueryHandlerMap {
       return {
         ...settingsManager.get(),
         resolvedLanguage: ctx.getResolvedLanguage(),
+      }
+    },
+
+    [Queries.GetNetworkInterfaces]: async () => {
+      return listNetworkInterfaces()
+    },
+
+    [Queries.GetNetworkSettings]: async () => {
+      return {
+        ...settingsManager.getNetwork(),
+        killSwitchActive: ctx.networkMonitor?.isKillSwitchActive() ?? false,
       }
     },
 

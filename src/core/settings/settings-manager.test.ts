@@ -1426,6 +1426,47 @@ describe('SettingsManager', () => {
       expect(manager.get().bridge.fixedPort).toBe(16900)
     })
 
+    it('merges network namespace on partial update and flags restart on bindInterface change', async () => {
+      expect(manager.getNetwork().bindInterface).toBe('')
+      expect(manager.getNetwork().killSwitch).toBe(false)
+
+      const result = await manager.update({
+        network: { bindInterface: 'tun0', killSwitch: true },
+      })
+      expect(result.saved).toBe(true)
+      expect(result.requiresRestart).toBe(true)
+      expect(result.changedRestartKeys).toContain('network.bindInterface')
+      expect(manager.getNetwork().bindInterface).toBe('tun0')
+      expect(manager.getNetwork().killSwitch).toBe(true)
+
+      // Changing only killSwitch should not require restart
+      const result2 = await manager.update({
+        network: { killSwitch: false },
+      })
+      expect(result2.requiresRestart).toBe(false)
+      expect(manager.getNetwork().bindInterface).toBe('tun0')
+      expect(manager.getNetwork().killSwitch).toBe(false)
+    })
+
+    it('saveNetworkSettings updates network settings directly', async () => {
+      const res1 = await manager.saveNetworkSettings({
+        bindInterface: 'eth0',
+        killSwitch: true,
+      })
+      expect(res1.ok).toBe(true)
+      expect(res1.requiresRestart).toBe(true)
+      expect(res1.settings.bindInterface).toBe('eth0')
+      expect(res1.settings.killSwitch).toBe(true)
+
+      const res2 = await manager.saveNetworkSettings({
+        killSwitch: false,
+      })
+      expect(res2.ok).toBe(true)
+      expect(res2.requiresRestart).toBe(false)
+      expect(res2.settings.bindInterface).toBe('eth0')
+      expect(res2.settings.killSwitch).toBe(false)
+    })
+
     it('does not reset instanceId to the unseeded sentinel on a partial bridge update', async () => {
       // Regression guard: `bridgeSettingsSchema` declares
       // `instanceId: z.string().catch('')`, so parsing a partial patch

@@ -8,6 +8,8 @@ import { getFfmpegInstallStatus } from '@core/ffmpeg/verified-install'
 import { pathExists } from '@core/fs/path-exists'
 import type { GeoIPManager } from '@core/geoip/geo-ip-manager'
 import { createGetGeoIPStatusHandler } from '@core/geoip/get-geo-ip-status'
+import type { NetworkInterfaceMonitor } from '@core/network/network-interface-monitor'
+import { listNetworkInterfaces } from '@core/network/network-interface-resolver'
 import type { NotificationCenter } from '@core/notifications/notification-center'
 import type { CapabilityHost } from '@core/plugin/capabilities/interface'
 import { readCommandGraph } from '@core/plugin/commands/command-graph'
@@ -142,6 +144,7 @@ export interface ServerQueryContext {
     'list' | 'validate' | 'validateFile' | 'locations'
   >
   environment: NodeJS.ProcessEnv
+  networkMonitor?: NetworkInterfaceMonitor
 }
 
 export function buildServerQueryHandlers(
@@ -284,6 +287,15 @@ export function buildServerQueryHandlers(
     [Queries.GetSettings]: async () => ({
       ...settingsManager.get(),
       resolvedLanguage: ctx.getResolvedLanguage(),
+    }),
+
+    [Queries.GetNetworkInterfaces]: async () => {
+      return listNetworkInterfaces()
+    },
+
+    [Queries.GetNetworkSettings]: async () => ({
+      ...settingsManager.getNetwork(),
+      killSwitchActive: ctx.networkMonitor?.isKillSwitchActive() ?? false,
     }),
     // A remote server cannot read the browser user's operating-system accent.
     [Queries.GetSystemAccentColor]: async () => null,

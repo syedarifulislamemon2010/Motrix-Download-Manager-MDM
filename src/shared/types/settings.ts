@@ -11,6 +11,7 @@ import type { EnginePerformanceProfile } from '../constants/engine-performance-p
 import type { LanguagePreference } from '../constants/locales'
 import type { BridgeSettings } from '../schemas/bridge-settings'
 import type { DirectoryPreferences } from '../schemas/directory-preferences'
+import type { NetworkSettings } from '../schemas/network-settings'
 import type { GeoIPSettings } from './geoip'
 import type { PluginSettings } from './plugin'
 import type { TrackerSource } from './tracker'
@@ -158,6 +159,7 @@ export interface AppSettings {
   media: MediaSettings
   dashboard: DashboardLayoutSettings
   speedLimit: SpeedLimitSettings
+  network: NetworkSettings
   bridge: BridgeSettings
   windowState: Record<string, WindowState>
 }

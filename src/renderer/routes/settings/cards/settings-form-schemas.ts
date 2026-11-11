@@ -3,6 +3,7 @@ import { engineSettingsInputSchema } from '@shared/schemas/engine-settings'
 import { geoIpSettingsInputSchema } from '@shared/schemas/geoip-settings'
 import { mediaSettingsInputSchema } from '@shared/schemas/media-settings'
 import { natSettingsInputSchema } from '@shared/schemas/nat-settings'
+import { networkSettingsSchema } from '@shared/schemas/network-settings'
 import { proxySettingsInputSchema } from '@shared/schemas/proxy-settings'
 import { trackerSettingsInputSchema } from '@shared/schemas/tracker-settings'
 import { z } from 'zod'
@@ -45,6 +46,7 @@ export const advancedFormSchema = engineSettingsInputSchema.pick({
 export const networkFormSchema = z.object({
   proxy: proxySettingsInputSchema,
   nat: natSettingsInputSchema,
+  network: networkSettingsSchema,
   engine: engineSettingsInputSchema.pick({ dnsMode: true }),
 })
 

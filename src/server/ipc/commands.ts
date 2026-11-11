@@ -8,6 +8,7 @@ import type { EventBus } from '@core/events/event-bus'
 import type { GeoIPManager } from '@core/geoip/geo-ip-manager'
 import { createUpdateGeoIPDatabaseHandler } from '@core/geoip/update-geo-ip-database'
 import { getLogger } from '@core/logger'
+import type { NetworkInterfaceMonitor } from '@core/network/network-interface-monitor'
 import { publishEngineRestartRequired } from '@core/notifications/engine-restart-required'
 import type { NotificationCenter } from '@core/notifications/notification-center'
 import type { CapabilityHost } from '@core/plugin/capabilities/interface'
@@ -97,6 +98,7 @@ import {
 } from '@shared/schemas/bulk-task-command'
 import { languagePreferenceSchema } from '@shared/schemas/locale'
 import { moveTasksPayloadSchema } from '@shared/schemas/move-tasks'
+import { networkSettingsSchema } from '@shared/schemas/network-settings'
 import { PluginLogVerboseRequestSchema } from '@shared/schemas/plugin-logs'
 import { checkPluginUpdatesPayloadSchema } from '@shared/schemas/plugin-update'
 import { removeTaskPayloadSchema } from '@shared/schemas/remove-task'
@@ -189,6 +191,7 @@ export interface ServerCommandContext {
   hookAuditLog?: HookAuditLog
   hookOrchestrator?: HookOrchestrator
   magnetTracker: MagnetTracker
+  networkMonitor?: NetworkInterfaceMonitor
   activityRecorder: TaskActivityRecorder
   persistTask?: NonNullable<TaskActionDeps['persistTask']>
   persistTaskWithPluginMetadata?: NonNullable<
@@ -1052,11 +1055,32 @@ export function buildServerCommandHandlers(
             )
           }
 
+          if (
+            oldFull.network?.bindInterface !== newFull.network?.bindInterface ||
+            oldFull.network?.killSwitch !== newFull.network?.killSwitch
+          ) {
+            void ctx.networkMonitor?.checkNow()
+          }
+
           return result
         },
         (err) =>
           log.warn({ err }, 'settings saved but runtime application failed')
       )
+    },
+
+    [Commands.SaveNetworkSettings]: async (payload: unknown) => {
+      const patch = networkSettingsSchema.partial().parse(payload)
+      const result = await settingsManager.saveNetworkSettings(patch)
+      if (result.requiresRestart) {
+        publishEngineRestartRequired({ eventBus, notificationCenter, log }, [
+          'network.bindInterface',
+        ])
+      }
+      if (ctx.networkMonitor) {
+        void ctx.networkMonitor.checkNow()
+      }
+      return { ok: true, settings: result.settings }
     },
 
     [Commands.UpdateGeoIPDatabase]: createUpdateGeoIPDatabaseHandler({

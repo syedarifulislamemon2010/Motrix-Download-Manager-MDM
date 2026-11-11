@@ -36,6 +36,7 @@ export const Commands = {
   ExportLegacyImportReport: 'command:exportLegacyImportReport',
   SetCompletionShutdown: 'command:setCompletionShutdown',
   SaveDownloadsSettings: 'command:saveDownloadsSettings',
+  SaveNetworkSettings: 'command:saveNetworkSettings',
   PauseTask: 'command:pauseTask',
   ResumeTask: 'command:resumeTask',
   RemoveTask: 'command:removeTask',

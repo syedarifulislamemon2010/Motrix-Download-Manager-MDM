@@ -292,6 +292,32 @@ describe('Aria2ConfigBuilder', () => {
   })
 
   describe('buildArgs', () => {
+    it('appends --interface flag when bindInterfaceIp is provided', () => {
+      const args = builder.buildArgs(
+        DEFAULT_ENGINE_SETTINGS,
+        true,
+        null,
+        { download: 0, upload: 0 },
+        '/home/user/Downloads',
+        false,
+        '10.14.0.2'
+      )
+      expect(args).toContain('--interface=10.14.0.2')
+    })
+
+    it('omits --interface flag when bindInterfaceIp is null or empty', () => {
+      const args = builder.buildArgs(
+        DEFAULT_ENGINE_SETTINGS,
+        true,
+        null,
+        { download: 0, upload: 0 },
+        '/home/user/Downloads',
+        false,
+        null
+      )
+      expect(args.some((a) => a.startsWith('--interface='))).toBe(false)
+    })
+
     it.each([8, 64])(
       'uses the configured server RPC budget of %s MiB',
       (mib) => {

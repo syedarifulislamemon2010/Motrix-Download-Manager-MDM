@@ -1855,7 +1855,18 @@
         "enableDesc": "定期运行上方已开启的检测。"
       },
       "description": "代理、DNS 与连接检查",
-      "diagnostics": "网络诊断"
+      "diagnostics": "网络诊断",
+      "interface": {
+        "title": "网络接口与 VPN",
+        "bind": "网络接口",
+        "bindDesc": "将下载绑定到指定网卡（例如 VPN）。需要重启下载引擎生效。",
+        "allInterfaces": "所有网络接口（默认）",
+        "killSwitch": "VPN 故障断网保护 (Kill-Switch)",
+        "killSwitchDesc": "当所选网络接口断开或失去 IP 时，自动暂停所有正在进行的下载任务。",
+        "killSwitchEngaged": "故障断网保护已触发：因网络接口“{{adapter}}”不可用，下载已暂停。",
+        "killSwitchDisengaged": "网络接口“{{adapter}}”已恢复，已恢复 {{count}} 个任务。",
+        "offline": "离线"
+      }
     },
     "common": {
       "browse": "浏览…",

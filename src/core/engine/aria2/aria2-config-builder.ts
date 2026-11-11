@@ -180,7 +180,8 @@ export class Aria2ConfigBuilder {
     proxy: Aria2ProxyOptions | null | undefined,
     effective: { download: number; upload: number },
     defaultSaveDir: string,
-    loadTextSession = false
+    loadTextSession = false,
+    bindInterfaceIp?: string | null
   ): string[] {
     if (this.rpcListenAll && settings.rpcSecret.trim() === '') {
       throw new Error(
@@ -275,6 +276,9 @@ export class Aria2ConfigBuilder {
       `--disk-cache=${settings.diskCache}`,
       `--save-session-interval=${settings.sessionSaveInterval}`
     )
+    if (bindInterfaceIp?.trim()) {
+      args.push(`--interface=${bindInterfaceIp.trim()}`)
+    }
 
     // ── L2.5 proxy ──
     // Always override every ambient/config-file proxy source. aria2 can read

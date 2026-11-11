@@ -2,6 +2,7 @@ import { appSettingsSchema } from '@shared/schemas/app-settings'
 import { dashboardLayoutSettingsSchema } from '@shared/schemas/dashboard-layout'
 import { engineSettingsSchema } from '@shared/schemas/engine-settings'
 import { natSettingsSchema } from '@shared/schemas/nat-settings'
+import { networkSettingsSchema } from '@shared/schemas/network-settings'
 import { speedLimitSettingsSchema } from '@shared/schemas/speed-limit'
 import type {
   DashboardLayoutSettings,
@@ -47,6 +48,10 @@ export {
   natSettingsSchema,
 } from '@shared/schemas/nat-settings'
 export {
+  DEFAULT_NETWORK_SETTINGS,
+  networkSettingsSchema,
+} from '@shared/schemas/network-settings'
+export {
   DEFAULT_ONBOARDING_STATE,
   onboardingStateSchema,
 } from '@shared/schemas/onboarding-state'
@@ -89,6 +94,12 @@ export function validateAppSettings(
 
 export function validateNatSettings(input: NatSettings): NatSettings {
   return natSettingsSchema.parse(input)
+}
+
+export function validateNetworkSettings(
+  input: import('@shared/schemas/network-settings').NetworkSettings
+): import('@shared/schemas/network-settings').NetworkSettings {
+  return networkSettingsSchema.parse(input)
 }
 
 export function validateDashboardLayoutSettings(

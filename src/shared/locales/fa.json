@@ -2743,6 +2743,17 @@
         "privacyHint": "از سرورهای STUN شخص ثالث استفاده می‌کند.",
         "servers": "سرورهای STUN",
         "title": "تشخیص نوع NAT"
+      },
+      "interface": {
+        "title": "Network interface & VPN",
+        "bind": "Network interface",
+        "bindDesc": "Bind downloads to a specific network adapter (e.g. VPN). Requires engine restart.",
+        "allInterfaces": "All interfaces (Default)",
+        "killSwitch": "VPN Kill-Switch",
+        "killSwitchDesc": "Automatically pause all active downloads if the selected network adapter disconnects or drops its IP.",
+        "killSwitchEngaged": "Kill-switch engaged: Downloads paused because '{{adapter}}' is unavailable.",
+        "killSwitchDisengaged": "Interface '{{adapter}}' restored. Resumed {{count}} paused tasks.",
+        "offline": "Offline"
       }
     },
     "title": "تنظیمات",

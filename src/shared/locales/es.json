@@ -1883,7 +1883,18 @@
         "enableDesc": "Repite las comprobaciones activadas arriba."
       },
       "description": "Proxy, DNS y comprobaciones de conexión",
-      "diagnostics": "Diagnóstico de red"
+      "diagnostics": "Diagnóstico de red",
+      "interface": {
+        "title": "Network interface & VPN",
+        "bind": "Network interface",
+        "bindDesc": "Bind downloads to a specific network adapter (e.g. VPN). Requires engine restart.",
+        "allInterfaces": "All interfaces (Default)",
+        "killSwitch": "VPN Kill-Switch",
+        "killSwitchDesc": "Automatically pause all active downloads if the selected network adapter disconnects or drops its IP.",
+        "killSwitchEngaged": "Kill-switch engaged: Downloads paused because '{{adapter}}' is unavailable.",
+        "killSwitchDisengaged": "Interface '{{adapter}}' restored. Resumed {{count}} paused tasks.",
+        "offline": "Offline"
+      }
     },
     "common": {
       "browse": "Examinar…",

@@ -59,6 +59,10 @@ const FIXTURE = {
   engine: {
     dnsMode: 'auto',
   },
+  network: {
+    bindInterface: '',
+    killSwitch: false,
+  },
 }
 
 describe('<NetworkDialog>', () => {
@@ -380,5 +384,56 @@ describe('<NetworkDialog>', () => {
       Commands.UpdateSettings,
       expect.anything()
     )
+  })
+
+  it('renders network interface and kill-switch controls and saves changes', async () => {
+    vi.mocked(transport.invoke).mockImplementation(async (channel: string) => {
+      if (channel === Queries.GetSettings) return FIXTURE
+      if (channel === Queries.GetNetworkInterfaces)
+        return [
+          {
+            id: 'eth0',
+            name: 'Ethernet',
+            addresses: ['192.168.1.100'],
+            ipv4: '192.168.1.100',
+            internal: false,
+            isUp: true,
+          },
+          {
+            id: 'wg0',
+            name: 'WireGuard',
+            addresses: ['10.0.0.2'],
+            ipv4: '10.0.0.2',
+            internal: false,
+            isUp: true,
+          },
+        ]
+      return {
+        saved: true,
+        requiresRestart: true,
+        changedRestartKeys: ['network.bindInterface'],
+      }
+    })
+
+    const onClose = vi.fn()
+    render(
+      <NetworkDialog
+        open
+        onClose={onClose}
+        labelKey="settings.cards.network.title"
+        descKey="settings.cards.network.desc"
+      />
+    )
+
+    await waitFor(() =>
+      expect(
+        screen.getByRole('heading', { name: /network interface & vpn/i })
+      ).toBeInTheDocument()
+    )
+
+    expect(
+      screen.getByText(/bind downloads to a specific network adapter/i)
+    ).toBeInTheDocument()
+    expect(screen.getByText(/vpn kill-switch/i)).toBeInTheDocument()
   })
 })

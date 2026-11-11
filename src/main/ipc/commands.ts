@@ -11,6 +11,7 @@ import type { EventBus } from '@core/events/event-bus'
 import type { GeoIPManager } from '@core/geoip/geo-ip-manager'
 import { createUpdateGeoIPDatabaseHandler } from '@core/geoip/update-geo-ip-database'
 import { getLogger } from '@core/logger'
+import type { NetworkInterfaceMonitor } from '@core/network/network-interface-monitor'
 import { publishEngineRestartRequired } from '@core/notifications/engine-restart-required'
 import type { NotificationCenter } from '@core/notifications/notification-center'
 import type { CapabilityHost } from '@core/plugin/capabilities/interface'
@@ -127,6 +128,7 @@ import {
 import { closeCurrentWindowSchema } from '@shared/schemas/close-current-window'
 import { filePickerOptionsSchema } from '@shared/schemas/file-picker'
 import { moveTasksPayloadSchema } from '@shared/schemas/move-tasks'
+import { networkSettingsSchema } from '@shared/schemas/network-settings'
 import { PluginLogVerboseRequestSchema } from '@shared/schemas/plugin-logs'
 import { checkPluginUpdatesPayloadSchema } from '@shared/schemas/plugin-update'
 import { REGISTRY_PLUGIN_ID_RE } from '@shared/schemas/registry'
@@ -261,6 +263,7 @@ export interface CommandContext {
   hookAuditLog?: HookAuditLog
   hookOrchestrator?: HookOrchestrator
   bridgeManager: BridgeManager
+  networkMonitor?: NetworkInterfaceMonitor
   magnetTracker: MagnetTracker
   activityRecorder: TaskActivityRecorder
   persistTask: NonNullable<TaskActionDeps['persistTask']>
@@ -1379,6 +1382,13 @@ export function buildCommandHandlers(ctx: CommandContext): CommandHandlerMap {
             )
           }
 
+          if (
+            oldFull.network?.bindInterface !== newFull.network?.bindInterface ||
+            oldFull.network?.killSwitch !== newFull.network?.killSwitch
+          ) {
+            void ctx.networkMonitor?.checkNow()
+          }
+
           return protocolAssociationApplied === undefined
             ? result
             : { ...result, protocolAssociationApplied }
@@ -1386,6 +1396,20 @@ export function buildCommandHandlers(ctx: CommandContext): CommandHandlerMap {
         (err) =>
           log.warn({ err }, 'settings saved but runtime application failed')
       )
+    },
+
+    [Commands.SaveNetworkSettings]: async (payload: unknown) => {
+      const patch = networkSettingsSchema.partial().parse(payload)
+      const result = await settingsManager.saveNetworkSettings(patch)
+      if (result.requiresRestart) {
+        publishEngineRestartRequired({ eventBus, notificationCenter, log }, [
+          'network.bindInterface',
+        ])
+      }
+      if (ctx.networkMonitor) {
+        void ctx.networkMonitor.checkNow()
+      }
+      return { ok: true, settings: result.settings }
     },
 
     [Commands.RestartEngine]: async () => {
