@@ -149,6 +149,10 @@
           "resvg.wasm",
           "SFNS-Regular.ttf"
         ]
+      },
+      {
+        "from": "./extra/plugins/",
+        "to": "./extra/plugins/"
       }
     ]
   },
@@ -177,6 +181,10 @@
         "from": "./extra/tray/",
         "to": "./extra/tray/",
         "filter": ["mo-tray-colorful-*.ico"]
+      },
+      {
+        "from": "./extra/plugins/",
+        "to": "./extra/plugins/"
       }
     ]
   },
@@ -252,6 +260,10 @@
           "mo-tray-light-active@1x.png",
           "mo-tray-light-active@2x.png"
         ]
+      },
+      {
+        "from": "./extra/plugins/",
+        "to": "./extra/plugins/"
       }
     ]
   },

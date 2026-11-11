@@ -1,0 +1,13 @@
+{
+  "name": "Debrid Link Resolver",
+  "description": "Unrestricts filehoster links (Rapidgator, 1Fichier, Mega, etc.) via Real-Debrid, AllDebrid, or Premiumize into fast direct download streams.",
+  "settings.title": "Debrid Resolver Settings",
+  "settings.provider.title": "Debrid Provider",
+  "settings.provider.desc": "Choose your active debrid provider account.",
+  "settings.apiKey.title": "API Key / Token",
+  "settings.apiKey.desc": "Your debrid account API token. Stored securely and masked.",
+  "settings.autoUnrestrict.title": "Auto-Unrestrict Links",
+  "settings.autoUnrestrict.desc": "Automatically resolve supported filehoster links when added.",
+  "settings.fallbackOnFailure.title": "Fallback on Failure",
+  "settings.fallbackOnFailure.desc": "If unrestricting fails, proceed with the original URL instead of aborting the download task."
+}

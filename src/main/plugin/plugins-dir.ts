@@ -1,5 +1,6 @@
 import { mkdir } from 'node:fs/promises'
 import path from 'node:path'
+import { seedBundledPlugins } from '@core/plugin/seed-bundled-plugins'
 import type { PlatformServices } from '@shared/platform/services'
 import { app } from 'electron'
 
@@ -11,6 +12,11 @@ export async function resolvePluginsDir(
 }> {
   const pluginsDir = path.join(app.getPath('userData'), 'plugins')
   await mkdir(pluginsDir, { recursive: true })
+
+  // Seed bundled community plugins into pluginsDir if not present
+  const bundledSeedDir = path.join(platform.extraResourceDir, 'plugins')
+  await seedBundledPlugins(bundledSeedDir, pluginsDir)
+
   // Builtin plugins are fetched by `pnpm build:builtin`
   // (scripts/fetch-builtins.mjs, lockfile-pinned motrixapp/builtin-plugins
   // release artifacts) into <projectRoot>/dist/builtin-plugins/<id>/ and, at

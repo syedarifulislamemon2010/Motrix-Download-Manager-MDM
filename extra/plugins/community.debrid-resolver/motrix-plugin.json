@@ -1,0 +1,74 @@
+{
+  "$schema": "https://motrix.app/schemas/plugin/v1.json",
+  "manifestVersion": 1,
+  "id": "community.debrid-resolver",
+  "name": "%name%",
+  "version": "1.0.0",
+  "description": "%description%",
+  "categories": ["site-resolver"],
+  "engines": { "motrix": ">=2.0.0" },
+  "main": "dist/plugin.js",
+  "requestedHeapMB": 32,
+  "permissions": ["http"],
+  "hostPermissions": [
+    "*://api.real-debrid.com/*",
+    "*://api.alldebrid.com/*",
+    "*://www.premiumize.me/*",
+    "*://*.rapidgator.net/*",
+    "*://*.1fichier.com/*",
+    "*://*.uploaded.net/*",
+    "*://*.nitroflare.com/*",
+    "*://*.turbobit.net/*",
+    "*://*.filefactory.com/*",
+    "*://*.uptobox.com/*",
+    "*://*.ddownload.com/*",
+    "*://*.katfile.com/*",
+    "*://*.fikper.com/*",
+    "*://mega.nz/*",
+    "*://*.mediafire.com/*",
+    "*://*.alldebrid.com/*",
+    "*://*.real-debrid.com/*",
+    "*://*.premiumize.me/*"
+  ],
+  "activationEvents": ["onTaskType:http", "onProtocol:https"],
+  "contributes": {
+    "hooks": {
+      "beforeCreate": { "role": "resolve" }
+    },
+    "configuration": {
+      "title": "%settings.title%",
+      "schema": {
+        "type": "object",
+        "properties": {
+          "provider": {
+            "type": "string",
+            "enum": ["real-debrid", "alldebrid", "premiumize"],
+            "default": "real-debrid",
+            "title": "%settings.provider.title%",
+            "description": "%settings.provider.desc%"
+          },
+          "apiKey": {
+            "type": "string",
+            "secret": true,
+            "default": "",
+            "title": "%settings.apiKey.title%",
+            "description": "%settings.apiKey.desc%"
+          },
+          "autoUnrestrict": {
+            "type": "boolean",
+            "default": true,
+            "title": "%settings.autoUnrestrict.title%",
+            "description": "%settings.autoUnrestrict.desc%"
+          },
+          "fallbackOnFailure": {
+            "type": "boolean",
+            "default": true,
+            "title": "%settings.fallbackOnFailure.title%",
+            "description": "%settings.fallbackOnFailure.desc%"
+          }
+        }
+      }
+    }
+  },
+  "l10n": "locales"
+}

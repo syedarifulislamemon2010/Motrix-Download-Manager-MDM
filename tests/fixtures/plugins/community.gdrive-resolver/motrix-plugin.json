@@ -1,0 +1,46 @@
+{
+  "$schema": "https://motrix.app/schemas/plugin/v1.json",
+  "manifestVersion": 1,
+  "id": "community.gdrive-resolver",
+  "name": "%name%",
+  "version": "1.0.0",
+  "description": "%description%",
+  "categories": ["site-resolver"],
+  "engines": { "motrix": ">=2.0.0" },
+  "main": "dist/plugin.js",
+  "requestedHeapMB": 32,
+  "permissions": ["http"],
+  "hostPermissions": [
+    "*://drive.google.com/*",
+    "*://docs.google.com/*",
+    "*://drive.usercontent.google.com/*"
+  ],
+  "activationEvents": ["onTaskType:http", "onProtocol:https"],
+  "contributes": {
+    "hooks": {
+      "beforeCreate": { "role": "resolve" }
+    },
+    "configuration": {
+      "title": "%settings.title%",
+      "schema": {
+        "type": "object",
+        "properties": {
+          "fallbackOnFailure": {
+            "type": "boolean",
+            "default": true,
+            "title": "%settings.fallbackOnFailure.title%",
+            "description": "%settings.fallbackOnFailure.desc%"
+          },
+          "docsExportFormat": {
+            "type": "string",
+            "enum": ["pdf", "docx", "xlsx", "pptx"],
+            "default": "pdf",
+            "title": "%settings.docsExportFormat.title%",
+            "description": "%settings.docsExportFormat.desc%"
+          }
+        }
+      }
+    }
+  },
+  "l10n": "locales"
+}

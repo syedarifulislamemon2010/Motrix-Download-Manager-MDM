@@ -1,0 +1,28 @@
+{
+  "version": 1,
+  "pluginId": "community.gdrive-resolver",
+  "source": {
+    "type": "local",
+    "url": "local",
+    "bundleSha256": "f97ba89b33f927a7bba857f04e48ba58959254befc05904c14e093dbbe9d804d",
+    "recordedAt": 1794383035967
+  },
+  "grants": {
+    "http": "granted"
+  },
+  "consentSnapshot": {
+    "permissions": [
+      "http"
+    ],
+    "optionalPermissions": [],
+    "invokesCommands": [],
+    "publicCommands": {},
+    "requestedHeapMB": 32,
+    "enginesMotrix": ">=2.0.0",
+    "hostPermissions": [
+      "*://drive.google.com/*",
+      "*://docs.google.com/*",
+      "*://drive.usercontent.google.com/*"
+    ]
+  }
+}

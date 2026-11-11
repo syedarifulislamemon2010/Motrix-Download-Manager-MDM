@@ -1,5 +1,6 @@
 import { mkdir, open, realpath, rm, stat, unlink } from 'node:fs/promises'
 import path from 'node:path'
+import { seedBundledPlugins } from '@core/plugin/seed-bundled-plugins'
 
 interface ServerPluginDirectoryEnvironment {
   MOTRIX_PLUGIN_DIR?: string
@@ -76,6 +77,8 @@ export async function resolveServerPluginsDir(
     })
   )
   await requireWritableDirectory(path.join(pluginsDir, '_logs'))
+  const seedDir = path.join(process.cwd(), 'extra', 'plugins')
+  await seedBundledPlugins(seedDir, pluginsDir)
   const builtinDir = absolutePath(
     env.MOTRIX_BUILTIN_PLUGIN_DIR ?? path.join(userDataDir, 'builtin-plugins'),
     env.MOTRIX_BUILTIN_PLUGIN_DIR

@@ -1,0 +1,43 @@
+{
+  "version": 1,
+  "pluginId": "community.debrid-resolver",
+  "source": {
+    "type": "local",
+    "url": "local",
+    "bundleSha256": "f457a386e295b886b351650e8f3aaf4ced9c58b3646e01ae9350d66aecb91ff4",
+    "recordedAt": 1794383080526
+  },
+  "grants": {
+    "http": "granted"
+  },
+  "consentSnapshot": {
+    "permissions": [
+      "http"
+    ],
+    "optionalPermissions": [],
+    "invokesCommands": [],
+    "publicCommands": {},
+    "requestedHeapMB": 32,
+    "enginesMotrix": ">=2.0.0",
+    "hostPermissions": [
+      "*://api.real-debrid.com/*",
+      "*://api.alldebrid.com/*",
+      "*://www.premiumize.me/*",
+      "*://*.rapidgator.net/*",
+      "*://*.1fichier.com/*",
+      "*://*.uploaded.net/*",
+      "*://*.nitroflare.com/*",
+      "*://*.turbobit.net/*",
+      "*://*.filefactory.com/*",
+      "*://*.uptobox.com/*",
+      "*://*.ddownload.com/*",
+      "*://*.katfile.com/*",
+      "*://*.fikper.com/*",
+      "*://mega.nz/*",
+      "*://*.mediafire.com/*",
+      "*://*.alldebrid.com/*",
+      "*://*.real-debrid.com/*",
+      "*://*.premiumize.me/*"
+    ]
+  }
+}

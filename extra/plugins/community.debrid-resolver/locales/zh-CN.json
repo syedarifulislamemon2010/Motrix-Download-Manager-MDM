@@ -1,0 +1,13 @@
+{
+  "name": "Debrid 网盘解析器",
+  "description": "通过 Real-Debrid、AllDebrid 或 Premiumize 将网盘链接（Rapidgator、1Fichier、Mega 等）解除限制为高速直接下载流。",
+  "settings.title": "Debrid 解析器设置",
+  "settings.provider.title": "Debrid 服务商",
+  "settings.provider.desc": "选择当前使用的 Debrid 服务提供商账户。",
+  "settings.apiKey.title": "API Key / 令牌",
+  "settings.apiKey.desc": "您的 Debrid 账户 API 令牌，安全加密存储并在界面中遮罩。",
+  "settings.autoUnrestrict.title": "自动解除限制",
+  "settings.autoUnrestrict.desc": "添加支持的网盘链接时自动进行高速解析。",
+  "settings.fallbackOnFailure.title": "解析失败时回退",
+  "settings.fallbackOnFailure.desc": "若解除限制失败，则使用原始 URL 继续下载，而不是终止任务。"
+}

@@ -1,0 +1,9 @@
+{
+  "name": "Google Drive & Docs Resolver",
+  "description": "Resolves Google Drive files and Google Docs/Sheets/Slides share links to direct download streams with virus scan bypass.",
+  "settings.title": "Google Drive Resolver Settings",
+  "settings.fallbackOnFailure.title": "Fallback on Failure",
+  "settings.fallbackOnFailure.desc": "If link resolution fails, proceed with the original URL instead of aborting the download task.",
+  "settings.docsExportFormat.title": "Google Docs Export Format",
+  "settings.docsExportFormat.desc": "Default format to export Google Docs files (PDF, DOCX, XLSX, PPTX)."
+}

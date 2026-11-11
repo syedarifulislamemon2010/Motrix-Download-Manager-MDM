@@ -1,0 +1,9 @@
+{
+  "name": "Google 云端硬盘与文档解析器",
+  "description": "将 Google 云端硬盘与文档/表格/幻灯片分享链接解析为直接下载流，并自动处理大文件病毒扫描警告。",
+  "settings.title": "Google 云端硬盘解析器设置",
+  "settings.fallbackOnFailure.title": "解析失败时回退",
+  "settings.fallbackOnFailure.desc": "若链接解析失败，则使用原始 URL 继续下载，而不是终止任务。",
+  "settings.docsExportFormat.title": "Google 文档导出格式",
+  "settings.docsExportFormat.desc": "导出 Google 文档时的默认格式（PDF、DOCX、XLSX、PPTX）。"
+}
