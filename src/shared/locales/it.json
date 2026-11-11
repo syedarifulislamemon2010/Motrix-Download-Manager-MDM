@@ -2253,7 +2253,23 @@
           "io": "Operazione non riuscita. Controlla l’accesso al disco e prova Ripara."
         }
       },
-      "description": "Browser, app predefinite e strumenti"
+      "description": "Browser, app predefinite e strumenti",
+      "mcp": {
+        "title": "AI Assistant (MCP)",
+        "description": "Control Motrix from external AI assistants like Claude Desktop, Cursor, or Cline via the Model Context Protocol.",
+        "enableTitle": "Enable MCP server",
+        "enableDesc": "Allows external AI assistants to interact with Motrix downloads.",
+        "permissionTierTitle": "Permission tier",
+        "permissionTierDesc": "Controls what actions external AI models are authorized to perform.",
+        "tierReadOnly": "Read-only: Inspect downloads and stats without making changes",
+        "tierStandard": "Standard: Add, pause, and resume download tasks",
+        "tierFull": "Full Control: Manage speed limits and delete downloads",
+        "allowDeleteFilesTitle": "Allow deleting downloaded files from disk",
+        "allowDeleteFilesDesc": "When disabled, removing a task via MCP cannot delete files from storage.",
+        "clientConfigTitle": "AI Client Configuration (Claude Desktop, Cursor)",
+        "auditTitle": "Recent MCP Activity",
+        "auditEmpty": "No MCP activity recorded yet."
+      }
     },
     "validation": {
       "rangeHint": "Intervallo: {{min}}–{{max}}.",

@@ -2223,7 +2223,23 @@
           "io": "操作失败，请检查磁盘访问权限后重试修复。"
         }
       },
-      "description": "浏览器、默认应用与工具"
+      "description": "浏览器、默认应用与工具",
+      "mcp": {
+        "title": "AI 助手 (MCP)",
+        "description": "通过模型上下文协议 (Model Context Protocol) 允许 Claude Desktop、Cursor 或 Cline 等外部 AI 助手控制 Motrix。",
+        "enableTitle": "启用 MCP 服务",
+        "enableDesc": "允许外部 AI 助手与 Motrix 下载任务进行交互。",
+        "permissionTierTitle": "权限级别",
+        "permissionTierDesc": "控制外部 AI 模型有权执行的操作范围。",
+        "tierReadOnly": "只读：仅可查看下载列表和状态，不可修改",
+        "tierStandard": "标准：可添加、暂停和恢复下载任务",
+        "tierFull": "完全控制：可调整限速以及删除下载任务",
+        "allowDeleteFilesTitle": "允许从磁盘删除已下载的文件",
+        "allowDeleteFilesDesc": "禁用时，通过 MCP 删除任务无法从存储中删除实际文件。",
+        "clientConfigTitle": "AI 客户端配置 (Claude Desktop, Cursor)",
+        "auditTitle": "最近 MCP 活动记录",
+        "auditEmpty": "暂无 MCP 活动记录。"
+      }
     },
     "validation": {
       "rangeHint": "范围：{{min}}–{{max}}。",

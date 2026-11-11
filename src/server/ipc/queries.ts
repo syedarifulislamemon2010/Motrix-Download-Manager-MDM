@@ -8,6 +8,7 @@ import { getFfmpegInstallStatus } from '@core/ffmpeg/verified-install'
 import { pathExists } from '@core/fs/path-exists'
 import type { GeoIPManager } from '@core/geoip/geo-ip-manager'
 import { createGetGeoIPStatusHandler } from '@core/geoip/get-geo-ip-status'
+import type { McpAuditLog } from '@core/mcp'
 import type { NetworkInterfaceMonitor } from '@core/network/network-interface-monitor'
 import { listNetworkInterfaces } from '@core/network/network-interface-resolver'
 import type { NotificationCenter } from '@core/notifications/notification-center'
@@ -145,6 +146,7 @@ export interface ServerQueryContext {
   >
   environment: NodeJS.ProcessEnv
   networkMonitor?: NetworkInterfaceMonitor
+  mcpAuditLog?: McpAuditLog
 }
 
 export function buildServerQueryHandlers(
@@ -297,6 +299,14 @@ export function buildServerQueryHandlers(
       ...settingsManager.getNetwork(),
       killSwitchActive: ctx.networkMonitor?.isKillSwitchActive() ?? false,
     }),
+
+    [Queries.GetMcpSettings]: async () => {
+      return settingsManager.getMcp()
+    },
+
+    [Queries.GetMcpAuditLogs]: async () => {
+      return ctx.mcpAuditLog?.getEntries() ?? []
+    },
     // A remote server cannot read the browser user's operating-system accent.
     [Queries.GetSystemAccentColor]: async () => null,
 

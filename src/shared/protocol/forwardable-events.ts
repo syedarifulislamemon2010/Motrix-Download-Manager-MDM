@@ -58,6 +58,7 @@ export const ForwardableEvents = [
   Events.NotificationAdded,
   Events.NotificationsChanged,
   Events.KillSwitchStateChanged,
+  Events.McpAuditLogAdded,
   // Bridge pairing and session events keep the web renderer's approval UI and
   // profile connection status synchronized, same as Electron IPC.
   BridgeEvents.PairRequested,

@@ -43,6 +43,11 @@ import {
   networkSettingsSchema,
 } from '@shared/schemas/network-settings'
 import {
+  DEFAULT_MCP_SETTINGS,
+  type McpSettings,
+  mcpSettingsSchema,
+} from '@shared/schemas/mcp-settings'
+import {
   DEFAULT_PROXY_SETTINGS,
   proxySettingsSchema,
 } from '@shared/schemas/proxy-settings'
@@ -79,6 +84,7 @@ import {
   validateEngineSettings,
   validateNatSettings,
   validateNetworkSettings,
+  validateMcpSettings,
   validateSpeedLimitSettings,
   validateTrackerSettings,
   windowStateSchema,
@@ -158,6 +164,7 @@ function createDefaultSettings(
     dashboard: validateDashboardLayoutSettings({} as DashboardLayoutSettings),
     speedLimit: createDefaultSpeedLimitSettings(byteUnitSystem),
     network: { ...DEFAULT_NETWORK_SETTINGS },
+    mcp: { ...DEFAULT_MCP_SETTINGS },
     // Fresh install: mint a real, durable instance id now rather than
     // persisting the '' sentinel. Unlike rpcSecret/defaultSaveDir (seeded
     // later by seedSentinels using instance-scoped defaults), the UUID
@@ -776,6 +783,14 @@ export class SettingsManager {
       }
     }
 
+    // Merge mcp settings
+    if (partial.mcp) {
+      next.mcp = validateMcpSettings({
+        ...next.mcp,
+        ...partial.mcp,
+      })
+    }
+
     // Merge plugins
     if (partial.plugins !== undefined) {
       next.plugins = {
@@ -847,12 +862,37 @@ export class SettingsManager {
       network: networkSettingsSchema.parse(
         (raw.network ?? {}) as NetworkSettings
       ),
+      mcp: mcpSettingsSchema.parse((raw.mcp ?? {}) as McpSettings),
       windowState: windowStateSchema.parse(raw.windowState ?? {}),
     }
   }
 
   getNetwork(): NetworkSettings {
     return this.settings.network
+  }
+
+  getMcp(): McpSettings {
+    return this.settings.mcp ?? DEFAULT_MCP_SETTINGS
+  }
+
+  async saveMcpSettings(patch: Partial<McpSettings>): Promise<{
+    ok: boolean
+    settings: McpSettings
+  }> {
+    return this.enqueueMutation(async () => {
+      const old = structuredClone(this.settings)
+      const next = structuredClone(this.settings)
+      const nextMcp = mcpSettingsSchema.parse({
+        ...old.mcp,
+        ...patch,
+      })
+      next.mcp = nextMcp
+      if (JSON.stringify(old.mcp) !== JSON.stringify(nextMcp)) {
+        await this.saveSettings(next)
+        this.commitSettings(old, next)
+      }
+      return { ok: true, settings: next.mcp }
+    })
   }
 
   async saveNetworkSettings(patch: Partial<NetworkSettings>): Promise<{

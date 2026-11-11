@@ -8,6 +8,7 @@ import type { EventBus } from '@core/events/event-bus'
 import type { GeoIPManager } from '@core/geoip/geo-ip-manager'
 import { createUpdateGeoIPDatabaseHandler } from '@core/geoip/update-geo-ip-database'
 import { getLogger } from '@core/logger'
+import type { McpAuditLog } from '@core/mcp'
 import type { NetworkInterfaceMonitor } from '@core/network/network-interface-monitor'
 import { publishEngineRestartRequired } from '@core/notifications/engine-restart-required'
 import type { NotificationCenter } from '@core/notifications/notification-center'
@@ -97,6 +98,7 @@ import {
   taskIdsPayloadSchema,
 } from '@shared/schemas/bulk-task-command'
 import { languagePreferenceSchema } from '@shared/schemas/locale'
+import { mcpSettingsSchema } from '@shared/schemas/mcp-settings'
 import { moveTasksPayloadSchema } from '@shared/schemas/move-tasks'
 import { networkSettingsSchema } from '@shared/schemas/network-settings'
 import { PluginLogVerboseRequestSchema } from '@shared/schemas/plugin-logs'
@@ -192,6 +194,7 @@ export interface ServerCommandContext {
   hookOrchestrator?: HookOrchestrator
   magnetTracker: MagnetTracker
   networkMonitor?: NetworkInterfaceMonitor
+  mcpAuditLog?: McpAuditLog
   activityRecorder: TaskActivityRecorder
   persistTask?: NonNullable<TaskActionDeps['persistTask']>
   persistTaskWithPluginMetadata?: NonNullable<
@@ -1081,6 +1084,17 @@ export function buildServerCommandHandlers(
         void ctx.networkMonitor.checkNow()
       }
       return { ok: true, settings: result.settings }
+    },
+
+    [Commands.SaveMcpSettings]: async (payload: unknown) => {
+      const patch = mcpSettingsSchema.partial().parse(payload)
+      const result = await settingsManager.saveMcpSettings(patch)
+      return { ok: true, settings: result.settings }
+    },
+
+    [Commands.ClearMcpAuditLogs]: async () => {
+      ctx.mcpAuditLog?.clear()
+      return { ok: true }
     },
 
     [Commands.UpdateGeoIPDatabase]: createUpdateGeoIPDatabaseHandler({

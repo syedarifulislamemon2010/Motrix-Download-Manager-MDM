@@ -1467,6 +1467,26 @@ describe('SettingsManager', () => {
       expect(res2.settings.killSwitch).toBe(false)
     })
 
+    it('merges mcp namespace on partial update and updates directly', async () => {
+      expect(manager.getMcp().enabled).toBe(false)
+      expect(manager.getMcp().permissionTier).toBe('standard')
+
+      const result = await manager.update({
+        mcp: { enabled: true, permissionTier: 'full', allowDeleteFiles: true },
+      })
+      expect(result.saved).toBe(true)
+      expect(manager.getMcp().enabled).toBe(true)
+      expect(manager.getMcp().permissionTier).toBe('full')
+      expect(manager.getMcp().allowDeleteFiles).toBe(true)
+
+      const directRes = await manager.saveMcpSettings({
+        permissionTier: 'read_only',
+      })
+      expect(directRes.ok).toBe(true)
+      expect(directRes.settings.permissionTier).toBe('read_only')
+      expect(directRes.settings.enabled).toBe(true)
+    })
+
     it('does not reset instanceId to the unseeded sentinel on a partial bridge update', async () => {
       // Regression guard: `bridgeSettingsSchema` declares
       // `instanceId: z.string().catch('')`, so parsing a partial patch

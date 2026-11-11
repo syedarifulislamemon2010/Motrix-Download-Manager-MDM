@@ -29,7 +29,11 @@ import { pickDirty } from '@renderer/lib/form-utils'
 import { useOperatorSession } from '@renderer/lib/operator-auth'
 import { saveSettings } from '@renderer/lib/settings-save'
 import { transport } from '@renderer/lib/transport'
-import { DEFAULT_APP_SETTINGS, DEFAULT_MEDIA_SETTINGS } from '@shared/schemas'
+import {
+  DEFAULT_APP_SETTINGS,
+  DEFAULT_MCP_SETTINGS,
+  DEFAULT_MEDIA_SETTINGS,
+} from '@shared/schemas'
 import { supportsClientPairing } from '@shared/schemas/operator-auth'
 import type { AppSettings } from '@shared/types/settings'
 import { useState } from 'react'
@@ -44,6 +48,7 @@ import { BrowserExtensionsSection } from './browser-extensions-section'
 import { CLIClientsSection } from './cli-clients-section'
 import { CliToolSection } from './cli-tool-section'
 import { ClientPairingSwitch } from './client-pairing-switch'
+import { McpSection } from './mcp-section'
 import { MediaToolsSection } from './media-tools-section'
 import { PendingApprovalsSection } from './pending-approvals-section'
 import { SystemProtocolsSection } from './system-protocols-section'
@@ -56,6 +61,7 @@ const DEFAULTS: IntegrationFormValues = {
     protocols: DEFAULT_APP_SETTINGS.protocols,
   },
   media: { ...DEFAULT_MEDIA_SETTINGS },
+  mcp: { ...DEFAULT_MCP_SETTINGS },
 }
 
 export function IntegrationDialog({
@@ -90,6 +96,7 @@ export function IntegrationDialog({
           protocols: all.app.protocols,
         },
         media: { ...all.media },
+        mcp: all.mcp ? { ...all.mcp } : { ...DEFAULT_MCP_SETTINGS },
       })
     }
   })
@@ -101,6 +108,7 @@ export function IntegrationDialog({
       | Partial<{
           app: Partial<IntegrationFormValues['app']>
           media: Partial<IntegrationFormValues['media']>
+          mcp: Partial<IntegrationFormValues['mcp']>
         }>
       | undefined
     if (!dirty) {
@@ -265,6 +273,21 @@ export function IntegrationDialog({
                       {t('settings.integration.media.title')}
                     </h3>
                     <MediaToolsSection />
+                  </section>
+
+                  <Separator />
+
+                  <section
+                    aria-labelledby="integration-mcp"
+                    className="flex flex-col gap-3"
+                  >
+                    <h3
+                      id="integration-mcp"
+                      className="text-sm font-semibold text-foreground"
+                    >
+                      {t('settings.integration.mcp.title')}
+                    </h3>
+                    <McpSection />
                   </section>
                 </fieldset>
               </FormProvider>

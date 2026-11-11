@@ -50,6 +50,12 @@ import {
 } from '@core/legacy-import/legacy-task-policy'
 import { newTaskId } from '@core/lib/ids'
 import { getLogger, initLogger } from '@core/logger'
+import {
+  McpAuditLog,
+  McpPermissionGuard,
+  McpServer,
+  McpStdioTransport,
+} from '@core/mcp'
 import { NetworkInterfaceMonitor } from '@core/network/network-interface-monitor'
 import { registerEngineCompatibilitySubscriber } from '@core/notifications/engine-compatibility-subscriber'
 import { registerEngineFailureSubscriber } from '@core/notifications/engine-failure-subscriber'
@@ -1431,11 +1437,21 @@ async function main() {
   })
   networkMonitor.start()
 
+  const mcpAuditLog = new McpAuditLog({
+    getSettings: () => settingsManager.getMcp(),
+    eventBus,
+  })
+
+  const mcpPermissionGuard = new McpPermissionGuard(() =>
+    settingsManager.getMcp()
+  )
+
   const commandHandlers = buildServerCommandHandlers({
     updateService,
     userDataDir: platform.userDataDir,
     trackAsyncWork: (operation) => shellAsyncWork.run(operation),
     networkMonitor,
+    mcpAuditLog,
     authorizeOutputWrite: nasTaskAccess?.authorizeOutputWrite,
     authorizeTaskWrite: nasTaskAccess?.authorizeWrite,
     authorizeTaskRemoval: nasTaskAccess?.authorizeRemoval,
@@ -1516,6 +1532,55 @@ async function main() {
   })
   const createTask = commandHandlers[Commands.CreateTask]
   if (!createTask) throw new Error('CreateTask handler is not registered')
+  const removeTaskHandler = commandHandlers[Commands.RemoveTask]
+  if (!removeTaskHandler)
+    throw new Error('RemoveTask handler is not registered')
+
+  const mcpServer = new McpServer({
+    permissionGuard: mcpPermissionGuard,
+    auditLog: mcpAuditLog,
+    taskManager,
+    engineAdapter: adapter,
+    getEngineStatus: () => supervisor.getStatus(),
+    createTask: async (req) => {
+      const res = await createTask({
+        type: 'http',
+        payload: { uris: req.uris },
+        saveDir: req.saveDir || settingsManager.getApp().defaultSaveDir,
+        split: req.split,
+        maxConnectionPerServer: req.maxConnectionPerServer,
+      })
+      const successResult = res as { taskId: string; gid?: string }
+      return {
+        taskId: successResult.taskId,
+        gid: successResult.gid,
+      }
+    },
+    pauseTask: (taskId) => pauseTaskAction(taskId, serverTaskActionDeps),
+    resumeTask: (taskId) => resumeTaskAction(taskId, serverTaskActionDeps),
+    removeTask: async (taskId, { deleteFiles }) => {
+      await removeTaskHandler({
+        taskId,
+        deleteWithFiles: deleteFiles,
+      })
+    },
+    setSpeedLimits: async (limits) => {
+      const current = settingsManager.get().speedLimit
+      await settingsManager.update({
+        speedLimit: {
+          base: {
+            download: limits.download ?? current.base.download,
+            upload: limits.upload ?? current.base.upload,
+          },
+        },
+      })
+    },
+  })
+
+  if (process.argv.includes('mcp') || process.argv.includes('--mcp')) {
+    const stdio = new McpStdioTransport(mcpServer)
+    stdio.start()
+  }
   const selectionTimeout = new MagnetSelectionTimeout({
     eventBus,
     getSettings: () => settingsManager.getApp(),
@@ -1564,6 +1629,7 @@ async function main() {
     downloadPathPolicy,
     environment: process.env,
     networkMonitor,
+    mcpAuditLog,
   })
 
   // Operator (control-plane) secret — provisioned INDEPENDENTLY of the

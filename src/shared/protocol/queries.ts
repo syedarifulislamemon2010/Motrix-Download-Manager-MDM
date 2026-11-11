@@ -109,6 +109,9 @@ export const Queries = {
   // Network interface binding & kill-switch (F3)
   GetNetworkInterfaces: 'query:getNetworkInterfaces',
   GetNetworkSettings: 'query:getNetworkSettings',
+  // AI Assistant MCP (F1)
+  GetMcpSettings: 'query:getMcpSettings',
+  GetMcpAuditLogs: 'query:getMcpAuditLogs',
 } as const
 
 export type QueryChannel = (typeof Queries)[keyof typeof Queries]

@@ -45,6 +45,12 @@ import {
 } from '@core/legacy-import/legacy-task-policy'
 import { newTaskId } from '@core/lib/ids'
 import { getLogger } from '@core/logger'
+import {
+  McpAuditLog,
+  McpPermissionGuard,
+  McpServer,
+  McpStdioTransport,
+} from '@core/mcp'
 import { NetworkInterfaceMonitor } from '@core/network/network-interface-monitor'
 import { registerEngineCompatibilitySubscriber } from '@core/notifications/engine-compatibility-subscriber'
 import { registerEngineFailureSubscriber } from '@core/notifications/engine-failure-subscriber'
@@ -138,6 +144,7 @@ import {
   ALL_DOWNLOADS_ROUTE,
   resolveTaskRoute,
 } from '@shared/lib/task-navigation'
+import { Commands } from '@shared/protocol/commands'
 import { Events } from '@shared/protocol/events'
 import { Queries } from '@shared/protocol/queries'
 import {
@@ -181,7 +188,7 @@ import {
 import { registerUpdateQuitPreparation } from './core/update-quit-preparation'
 import { setupExceptionHandler } from './exception-handler'
 import { registerApplicationMenuIpc } from './ipc/application-menu'
-import { registerCommandHandlers } from './ipc/commands'
+import { buildCommandHandlers, registerCommandHandlers } from './ipc/commands'
 import { createRevealInFolderHandler } from './ipc/commands/reveal-in-folder'
 import { registerDisclaimerIpc } from './ipc/disclaimer'
 import { setupEventForwarding } from './ipc/events'
@@ -3106,9 +3113,18 @@ async function initializeMainProcess(): Promise<void> {
   })
   networkMonitor.start()
 
-  const disposeCommandHandlers = registerCommandHandlers({
+  const mcpAuditLog = new McpAuditLog({
+    getSettings: () => settingsManager.getMcp(),
+    eventBus,
+  })
+
+  const mcpPermissionGuard = new McpPermissionGuard(() =>
+    settingsManager.getMcp()
+  )
+
+  const commandContext = {
     btStorageRuntime: pluginRuntime.finalize,
-    persistBtStorage: (task, source, target) =>
+    persistBtStorage: (task: DownloadTask, source: string, target: string) =>
       sessionManager.persistBtStorage(task, source, target),
     rendererRecovery,
     operationService: pluginRuntime.operations,
@@ -3116,11 +3132,12 @@ async function initializeMainProcess(): Promise<void> {
     cliToolService,
     supervisor,
     networkMonitor,
+    mcpAuditLog,
     dnsFallback: { reset: () => dnsFallbackConsumer?.reset() },
-    bindTaskRetry: (fn) => {
+    bindTaskRetry: (fn: (taskId: string) => Promise<unknown>) => {
       dnsFallbackRetry = fn
     },
-    recoverFinalization: async (taskId, sha256) => {
+    recoverFinalization: async (taskId: string, sha256?: string) => {
       if (!recoveryService) throw new Error('Task recovery is not ready')
       try {
         const report = await recoveryService.recoverTaskById(taskId, sha256)
@@ -3131,7 +3148,7 @@ async function initializeMainProcess(): Promise<void> {
     },
     sessionManager,
     settingsManager,
-    applyLocale: (language) => enqueueLocaleUpdate(language, true),
+    applyLocale: (language: string) => enqueueLocaleUpdate(language, true),
     protocolManager,
     windowManager,
     natManager,
@@ -3142,7 +3159,8 @@ async function initializeMainProcess(): Promise<void> {
     // Startup barrier for UI-initiated creates (AddTask window, motrix://
     // protocol, .torrent file-open) — same restore race as bridge submits.
     waitForTasksReady: () => mainProcessWork.waitForStartup(),
-    trackAsyncWork: (operation) => mainProcessWork.run(operation),
+    trackAsyncWork: <T>(operation: () => Promise<T>): Promise<T> =>
+      mainProcessWork.run(operation),
     trackerManager,
     contextStore,
     finalNamePicker,
@@ -3173,16 +3191,24 @@ async function initializeMainProcess(): Promise<void> {
     persistTaskWithPluginMetadata: pluginRuntime.persistTaskWithPluginMetadata,
     persistTaskWithOccurrence,
     occurrenceDispatcher,
-    recordTransition: (input) =>
+    recordTransition: (input: RuntimeTransitionInput) =>
       activeTaskInspectorActivityRuntime.recordTransition(input),
-    deleteParentTasks: (taskIds, deleteParents) =>
+    deleteParentTasks: (
+      taskIds: readonly string[],
+      deleteParents: () => void | Promise<void>
+    ) =>
       activeTaskInspectorActivityRuntime.deleteParentTasks(
         taskIds,
         deleteParents
       ),
-    runTaskMutation: (taskIds, operation) =>
-      activeTaskInspectorActivityRuntime.runTaskMutation(taskIds, operation),
-    parentTaskCreated: (task, persistParent) =>
+    runTaskMutation: <T>(
+      taskIds: readonly string[],
+      operation: () => Promise<T>
+    ) => activeTaskInspectorActivityRuntime.runTaskMutation(taskIds, operation),
+    parentTaskCreated: (
+      task: DownloadTask,
+      persistParent: () => void | Promise<void>
+    ) =>
       activeTaskInspectorActivityRuntime.parentTaskCreated(task, persistParent),
     publishTaskUpdate,
     publishTaskUpdateNow,
@@ -3191,7 +3217,56 @@ async function initializeMainProcess(): Promise<void> {
     hostVersion: app.getVersion(),
     builtinUpdater,
     overlayDir,
+  }
+
+  const mainCommandHandlers = buildCommandHandlers(commandContext)
+  const disposeCommandHandlers = registerCommandHandlers(commandContext)
+
+  const mcpServer = new McpServer({
+    permissionGuard: mcpPermissionGuard,
+    auditLog: mcpAuditLog,
+    taskManager,
+    engineAdapter: adapter,
+    getEngineStatus: () => supervisor.getStatus(),
+    createTask: async (req) => {
+      const handler = mainCommandHandlers[Commands.CreateTask]
+      if (!handler) throw new Error('CreateTask handler is not registered')
+      const res = (await handler({
+        type: 'http',
+        uris: req.uris,
+        saveDir: req.saveDir || settingsManager.getApp().defaultSaveDir,
+        split: req.split,
+        maxConnectionPerServer: req.maxConnectionPerServer,
+      })) as { taskId: string; gid: string }
+      return { taskId: res.taskId, gid: res.gid }
+    },
+    pauseTask: (taskId) => pauseTaskAction(taskId, mainTaskActionDeps),
+    resumeTask: (taskId) => resumeTaskAction(taskId, mainTaskActionDeps),
+    removeTask: async (taskId, { deleteFiles }) => {
+      const handler = mainCommandHandlers[Commands.RemoveTask]
+      if (!handler) throw new Error('RemoveTask handler is not registered')
+      await handler({
+        taskId,
+        deleteWithFiles: deleteFiles,
+      })
+    },
+    setSpeedLimits: async (limits) => {
+      const current = settingsManager.get().speedLimit
+      await settingsManager.update({
+        speedLimit: {
+          base: {
+            download: limits.download ?? current.base.download,
+            upload: limits.upload ?? current.base.upload,
+          },
+        },
+      })
+    },
   })
+
+  if (process.argv.includes('mcp') || process.argv.includes('--mcp')) {
+    const stdio = new McpStdioTransport(mcpServer)
+    stdio.start()
+  }
   const disposeQueryHandlers = registerQueryHandlers({
     getResolvedLanguage: () => resolvedApplicationLocale,
     mediaMetaStore,
@@ -3222,6 +3297,7 @@ async function initializeMainProcess(): Promise<void> {
     speedLimitController,
     updateManager,
     networkMonitor,
+    mcpAuditLog,
   })
   const disposeDownloadProgress = setupDownloadProgress({
     eventBus,

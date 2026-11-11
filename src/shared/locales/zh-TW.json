@@ -2223,7 +2223,23 @@
           "io": "操作失敗，請檢查磁碟存取權限後重試修復。"
         }
       },
-      "description": "瀏覽器、預設應用程式與工具"
+      "description": "瀏覽器、預設應用程式與工具",
+      "mcp": {
+        "title": "AI 助手 (MCP)",
+        "description": "透過模型上下文協定 (Model Context Protocol) 允許 Claude Desktop、Cursor 或 Cline 等外部 AI 助手控制 Motrix。",
+        "enableTitle": "啟用 MCP 服務",
+        "enableDesc": "允許外部 AI 助手與 Motrix 下載任務進行互動。",
+        "permissionTierTitle": "權限等級",
+        "permissionTierDesc": "控制外部 AI 模型有權執行的操作範圍。",
+        "tierReadOnly": "唯讀：僅可查看下載列表與狀態，不可修改",
+        "tierStandard": "標準：可新增、暫停與恢復下載任務",
+        "tierFull": "完全控制：可調整限速以及刪除下載任務",
+        "allowDeleteFilesTitle": "允許從磁碟刪除已下載的檔案",
+        "allowDeleteFilesDesc": "停用時，透過 MCP 刪除任務無法從儲存空間刪除實際檔案。",
+        "clientConfigTitle": "AI 客戶端設定 (Claude Desktop, Cursor)",
+        "auditTitle": "最近 MCP 活動記錄",
+        "auditEmpty": "暫無 MCP 活動記錄。"
+      }
     },
     "validation": {
       "rangeHint": "範圍：{{min}}–{{max}}。",

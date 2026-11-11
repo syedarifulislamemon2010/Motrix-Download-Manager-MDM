@@ -137,6 +137,8 @@ export const Events = {
   WindowMaximizedChanged: 'event:windowMaximizedChanged',
   // Network interface binding & kill-switch (F3)
   KillSwitchStateChanged: 'event:killSwitchStateChanged',
+  // AI Assistant MCP (F1)
+  McpAuditLogAdded: 'event:mcpAuditLogAdded',
 } as const
 
 export type EventChannel = (typeof Events)[keyof typeof Events]

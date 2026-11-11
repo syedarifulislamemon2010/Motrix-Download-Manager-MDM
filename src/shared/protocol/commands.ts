@@ -37,6 +37,9 @@ export const Commands = {
   SetCompletionShutdown: 'command:setCompletionShutdown',
   SaveDownloadsSettings: 'command:saveDownloadsSettings',
   SaveNetworkSettings: 'command:saveNetworkSettings',
+  // AI Assistant MCP (F1)
+  SaveMcpSettings: 'command:saveMcpSettings',
+  ClearMcpAuditLogs: 'command:clearMcpAuditLogs',
   PauseTask: 'command:pauseTask',
   ResumeTask: 'command:resumeTask',
   RemoveTask: 'command:removeTask',

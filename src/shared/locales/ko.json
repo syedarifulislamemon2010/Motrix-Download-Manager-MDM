@@ -2223,7 +2223,23 @@
           "io": "작업에 실패했습니다. 디스크 접근 권한을 확인한 후 복구를 시도하세요."
         }
       },
-      "description": "브라우저, 기본 앱 및 도구"
+      "description": "브라우저, 기본 앱 및 도구",
+      "mcp": {
+        "title": "AI Assistant (MCP)",
+        "description": "Control Motrix from external AI assistants like Claude Desktop, Cursor, or Cline via the Model Context Protocol.",
+        "enableTitle": "Enable MCP server",
+        "enableDesc": "Allows external AI assistants to interact with Motrix downloads.",
+        "permissionTierTitle": "Permission tier",
+        "permissionTierDesc": "Controls what actions external AI models are authorized to perform.",
+        "tierReadOnly": "Read-only: Inspect downloads and stats without making changes",
+        "tierStandard": "Standard: Add, pause, and resume download tasks",
+        "tierFull": "Full Control: Manage speed limits and delete downloads",
+        "allowDeleteFilesTitle": "Allow deleting downloaded files from disk",
+        "allowDeleteFilesDesc": "When disabled, removing a task via MCP cannot delete files from storage.",
+        "clientConfigTitle": "AI Client Configuration (Claude Desktop, Cursor)",
+        "auditTitle": "Recent MCP Activity",
+        "auditEmpty": "No MCP activity recorded yet."
+      }
     },
     "validation": {
       "rangeHint": "범위: {{min}}~{{max}}.",

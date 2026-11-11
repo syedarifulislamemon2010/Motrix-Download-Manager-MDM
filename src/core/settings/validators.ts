@@ -3,6 +3,11 @@ import { dashboardLayoutSettingsSchema } from '@shared/schemas/dashboard-layout'
 import { engineSettingsSchema } from '@shared/schemas/engine-settings'
 import { natSettingsSchema } from '@shared/schemas/nat-settings'
 import { networkSettingsSchema } from '@shared/schemas/network-settings'
+import {
+  DEFAULT_MCP_SETTINGS,
+  type McpSettings,
+  mcpSettingsSchema,
+} from '@shared/schemas/mcp-settings'
 import { speedLimitSettingsSchema } from '@shared/schemas/speed-limit'
 import type {
   DashboardLayoutSettings,
@@ -52,6 +57,11 @@ export {
   networkSettingsSchema,
 } from '@shared/schemas/network-settings'
 export {
+  DEFAULT_MCP_SETTINGS,
+  mcpSettingsSchema,
+  type McpSettings,
+} from '@shared/schemas/mcp-settings'
+export {
   DEFAULT_ONBOARDING_STATE,
   onboardingStateSchema,
 } from '@shared/schemas/onboarding-state'
@@ -100,6 +110,12 @@ export function validateNetworkSettings(
   input: import('@shared/schemas/network-settings').NetworkSettings
 ): import('@shared/schemas/network-settings').NetworkSettings {
   return networkSettingsSchema.parse(input)
+}
+
+export function validateMcpSettings(
+  input: import('@shared/schemas/mcp-settings').McpSettings
+): import('@shared/schemas/mcp-settings').McpSettings {
+  return mcpSettingsSchema.parse(input)
 }
 
 export function validateDashboardLayoutSettings(

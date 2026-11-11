@@ -4,8 +4,10 @@ import { ensureI18nLocale } from '@shared/i18n-resources'
 import {
   DEFAULT_APP_SETTINGS,
   DEFAULT_ENGINE_SETTINGS,
+  DEFAULT_MCP_SETTINGS,
   DEFAULT_MEDIA_SETTINGS,
   DEFAULT_NAT_SETTINGS,
+  DEFAULT_NETWORK_SETTINGS,
   DEFAULT_PROXY_SETTINGS,
   DEFAULT_TRACKER_SETTINGS,
 } from '@shared/schemas'
@@ -46,6 +48,7 @@ const forms: Record<string, { schema: z.ZodType; values: object }> = {
     values: {
       proxy: DEFAULT_PROXY_SETTINGS,
       nat: DEFAULT_NAT_SETTINGS,
+      network: DEFAULT_NETWORK_SETTINGS,
       engine: DEFAULT_ENGINE_SETTINGS,
     },
   },
@@ -60,7 +63,11 @@ const forms: Record<string, { schema: z.ZodType; values: object }> = {
   },
   integration: {
     schema: integrationFormSchema,
-    values: { app: DEFAULT_APP_SETTINGS, media: DEFAULT_MEDIA_SETTINGS },
+    values: {
+      app: DEFAULT_APP_SETTINGS,
+      media: DEFAULT_MEDIA_SETTINGS,
+      mcp: DEFAULT_MCP_SETTINGS,
+    },
   },
   geoip: { schema: geoIpSettingsInputSchema, values: DEFAULT_GEOIP_SETTINGS },
 }
@@ -114,6 +121,7 @@ describe('Settings form schemas', () => {
     ['integration', 'media.ffmpegStagingMB', 65537],
     ['integration', 'media.ffmpegOpTimeoutSec', 3601],
     ['integration', 'media.ffmpegBinaryPath', '/tmp/\0ffmpeg'],
+    ['integration', 'mcp.permissionTier', 'invalid_tier'],
     ['geoip', 'customUrl', 'x'.repeat(2049)],
   ])('%s rejects invalid %s without falling back', (name, path, value) => {
     const { schema, values } = forms[name as string]

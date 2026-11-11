@@ -11,6 +11,7 @@ import type { EventBus } from '@core/events/event-bus'
 import type { GeoIPManager } from '@core/geoip/geo-ip-manager'
 import { createUpdateGeoIPDatabaseHandler } from '@core/geoip/update-geo-ip-database'
 import { getLogger } from '@core/logger'
+import type { McpAuditLog } from '@core/mcp'
 import type { NetworkInterfaceMonitor } from '@core/network/network-interface-monitor'
 import { publishEngineRestartRequired } from '@core/notifications/engine-restart-required'
 import type { NotificationCenter } from '@core/notifications/notification-center'
@@ -127,6 +128,7 @@ import {
 } from '@shared/schemas/bulk-task-command'
 import { closeCurrentWindowSchema } from '@shared/schemas/close-current-window'
 import { filePickerOptionsSchema } from '@shared/schemas/file-picker'
+import { mcpSettingsSchema } from '@shared/schemas/mcp-settings'
 import { moveTasksPayloadSchema } from '@shared/schemas/move-tasks'
 import { networkSettingsSchema } from '@shared/schemas/network-settings'
 import { PluginLogVerboseRequestSchema } from '@shared/schemas/plugin-logs'
@@ -264,6 +266,7 @@ export interface CommandContext {
   hookOrchestrator?: HookOrchestrator
   bridgeManager: BridgeManager
   networkMonitor?: NetworkInterfaceMonitor
+  mcpAuditLog?: McpAuditLog
   magnetTracker: MagnetTracker
   activityRecorder: TaskActivityRecorder
   persistTask: NonNullable<TaskActionDeps['persistTask']>
@@ -1410,6 +1413,17 @@ export function buildCommandHandlers(ctx: CommandContext): CommandHandlerMap {
         void ctx.networkMonitor.checkNow()
       }
       return { ok: true, settings: result.settings }
+    },
+
+    [Commands.SaveMcpSettings]: async (payload: unknown) => {
+      const patch = mcpSettingsSchema.partial().parse(payload)
+      const result = await settingsManager.saveMcpSettings(patch)
+      return { ok: true, settings: result.settings }
+    },
+
+    [Commands.ClearMcpAuditLogs]: async () => {
+      ctx.mcpAuditLog?.clear()
+      return { ok: true }
     },
 
     [Commands.RestartEngine]: async () => {

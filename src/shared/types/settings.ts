@@ -11,6 +11,7 @@ import type { EnginePerformanceProfile } from '../constants/engine-performance-p
 import type { LanguagePreference } from '../constants/locales'
 import type { BridgeSettings } from '../schemas/bridge-settings'
 import type { DirectoryPreferences } from '../schemas/directory-preferences'
+import type { McpSettings } from '../schemas/mcp-settings'
 import type { NetworkSettings } from '../schemas/network-settings'
 import type { GeoIPSettings } from './geoip'
 import type { PluginSettings } from './plugin'
@@ -160,6 +161,7 @@ export interface AppSettings {
   dashboard: DashboardLayoutSettings
   speedLimit: SpeedLimitSettings
   network: NetworkSettings
+  mcp: McpSettings
   bridge: BridgeSettings
   windowState: Record<string, WindowState>
 }
