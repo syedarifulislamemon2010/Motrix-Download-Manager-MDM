@@ -40,7 +40,7 @@
     "build:snap:prepare": "node scripts/prepare-snap-project.mjs",
     "build:mac-arm64": "pnpm run build:builtin && pnpm run build:native-host -- --platform darwin --arch arm64 && pnpm run build:finalize-fs -- --platform darwin --arch arm64 && pnpm run build:safari-bootstrap -- --arch arm64 && pnpm run build:electron",
     "prestart:server": "node scripts/ensure-native-abi.mjs node",
-    "start:server": "MOTRIX_SKIP_ELECTRON_REBUILD=1 node dist/server/index.mjs",
+    "start:server": "node dist/server/index.mjs",
     "check:boundaries": "node scripts/check-boundaries.mjs",
     "check:plugin-security": "node --import tsx scripts/check-plugin-security.mjs",
     "check:file-names": "node scripts/check-file-names.mjs",
